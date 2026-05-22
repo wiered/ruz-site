@@ -1,6 +1,10 @@
-def main():
-    print("Hello from ruz-site!")
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
 
-if __name__ == "__main__":
-    main()
+app = FastAPI()
+
+
+@app.get("/", response_class=PlainTextResponse)
+async def homepage() -> str:
+    return "hello world"
