@@ -21,14 +21,10 @@ class Settings(BaseSettings):
     api_key: str = Field(validation_alias="API_KEY")
 
     host: str = Field(
-        default="127.0.0.1",
-        description="Uvicorn host adress",
-        validation_alias="HOST"
-        )
+        default="127.0.0.1", description="Uvicorn host adress", validation_alias="HOST"
+    )
     port: str = Field(
-        default="3000",
-        description="Uvicorn host port",
-        validation_alias="PORT"
+        default="3000", description="Uvicorn host port", validation_alias="PORT"
     )
 
     logging_level: str = Field(
