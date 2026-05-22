@@ -23,7 +23,7 @@ async def get_redis() -> Redis:
             settings.redis_url,
             decode_responses=True,
         )
-        logger.info("Initialized Redis client for %s", settings.redis_url)
+        logger.info("Initialized Redis client")
     return _redis_client
 
 

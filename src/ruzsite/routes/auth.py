@@ -12,6 +12,7 @@ from ruzsite.services.auth_service import (
     SESSION_COOKIE_NAME,
     encode_session,
     extract_init_data,
+    validate_same_origin,
     verify_telegram_init_data,
 )
 from ruzsite.services.rate_limit_service import enforce_rate_limit, get_client_ip
@@ -26,6 +27,7 @@ settings = get_settings()
 @router.post("/telegram")
 async def telegram_auth(request: Request) -> JSONResponse:
     """Verify Telegram Mini App init data and create a signed app session."""
+    validate_same_origin(request)
     client_ip = get_client_ip(request)
     await enforce_rate_limit(
         scope="auth:ip",

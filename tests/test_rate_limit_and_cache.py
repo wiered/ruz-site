@@ -114,14 +114,20 @@ def test_auth_ip_rate_limit_blocks_eleventh_request(fake_redis: FakeRedis) -> No
         response = client.post(
             "/auth/telegram",
             json={"initData": init_data},
-            headers={"X-Forwarded-For": "203.0.113.10"},
+            headers={
+                "Origin": "http://testserver",
+                "X-Forwarded-For": "203.0.113.10",
+            },
         )
         assert response.status_code == 200
 
     blocked = client.post(
         "/auth/telegram",
         json={"initData": init_data},
-        headers={"X-Forwarded-For": "203.0.113.10"},
+        headers={
+            "Origin": "http://testserver",
+            "X-Forwarded-For": "203.0.113.10",
+        },
     )
 
     assert blocked.status_code == 429
@@ -148,7 +154,10 @@ def test_auth_user_rate_limit_blocks_thirty_first_request(
         response = client.post(
             "/auth/telegram",
             json={"initData": init_data},
-            headers={"X-Forwarded-For": f"203.0.113.{index}"},
+            headers={
+                "Origin": "http://testserver",
+                "X-Forwarded-For": f"203.0.113.{index}",
+            },
         )
         assert response.status_code == 200
 
@@ -160,7 +169,10 @@ def test_auth_user_rate_limit_blocks_thirty_first_request(
     blocked = client.post(
         "/auth/telegram",
         json={"initData": init_data},
-        headers={"X-Forwarded-For": "198.51.100.50"},
+        headers={
+            "Origin": "http://testserver",
+            "X-Forwarded-For": "198.51.100.50",
+        },
     )
 
     assert blocked.status_code == 429
@@ -169,6 +181,65 @@ def test_auth_user_rate_limit_blocks_thirty_first_request(
         == "Too many Telegram auth attempts for this Telegram user."
     )
     assert blocked.headers["Retry-After"] == "3600"
+
+
+def test_auth_rejects_cross_origin_request(fake_redis: FakeRedis) -> None:
+    """Telegram auth should reject cross-site requests before verification."""
+    settings = get_settings()
+    init_data = _build_init_data(
+        bot_token=settings.telegram_bot_token,
+        user={"id": 777, "first_name": "Ruz"},
+        auth_date=int(time.time()),
+    )
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/auth/telegram",
+        json={"initData": init_data},
+        headers={"Origin": "https://evil.example"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Telegram auth request origin is invalid."
+
+
+def test_auth_rejects_non_json_request(fake_redis: FakeRedis) -> None:
+    """Telegram auth should only accept JSON bodies."""
+    settings = get_settings()
+    init_data = _build_init_data(
+        bot_token=settings.telegram_bot_token,
+        user={"id": 777, "first_name": "Ruz"},
+        auth_date=int(time.time()),
+    )
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/auth/telegram",
+        content=init_data,
+        headers={
+            "Origin": "http://testserver",
+            "Content-Type": "text/plain",
+        },
+    )
+
+    assert response.status_code == 415
+    assert (
+        response.json()["detail"]
+        == "Telegram auth endpoint only accepts JSON requests."
+    )
+
+
+def test_get_client_ip_ignores_forwarded_for_from_untrusted_client() -> None:
+    """Forwarded headers should be ignored unless the direct peer is trusted."""
+    request = Request(
+        {
+            "type": "http",
+            "headers": [(b"x-forwarded-for", b"203.0.113.10")],
+            "client": ("198.51.100.7", 54321),
+        }
+    )
+
+    assert rate_limit_service.get_client_ip(request) == "198.51.100.7"
 
 
 def test_schedule_state_uses_cached_schedule_after_first_request(

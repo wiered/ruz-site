@@ -106,11 +106,14 @@ def verify_telegram_init_data(
 
 
 async def extract_init_data(request: Request) -> str:
-    """Read Telegram init data from the Authorization header or request body."""
-    authorization = request.headers.get("Authorization", "")
-    if authorization.lower().startswith("tma "):
-        logger.debug("Reading Telegram initData from Authorization header")
-        return authorization[4:].strip()
+    """Read Telegram init data from a JSON request body."""
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type:
+        logger.warning("Telegram auth request used unsupported content type")
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Telegram auth endpoint only accepts JSON requests.",
+        )
 
     body = await request.body()
     if not body:
@@ -120,20 +123,34 @@ async def extract_init_data(request: Request) -> str:
             detail="Telegram initData was not provided.",
         )
 
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        logger.debug("Reading Telegram initData from JSON request body")
-        payload = TelegramAuthRequest.model_validate_json(body)
-        if payload.init_data:
-            return payload.init_data
-        logger.warning("Telegram auth JSON request had no initData field")
+    logger.debug("Reading Telegram initData from JSON request body")
+    payload = TelegramAuthRequest.model_validate_json(body)
+    if payload.init_data:
+        return payload.init_data
+    logger.warning("Telegram auth JSON request had no initData field")
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Telegram initData was not provided.",
+    )
+
+
+def validate_same_origin(request: Request) -> None:
+    """Reject cross-site auth requests based on the Origin header."""
+    origin = request.headers.get("origin")
+    if not origin:
+        logger.warning("Telegram auth request is missing Origin header")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Telegram initData was not provided.",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Telegram auth request origin is invalid.",
         )
 
-    logger.debug("Reading Telegram initData from raw request body")
-    return body.decode("utf-8").strip()
+    request_origin = f"{request.url.scheme}://{request.url.netloc}"
+    if origin.rstrip("/") != request_origin:
+        logger.warning("Rejected Telegram auth request from origin %s", origin)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Telegram auth request origin is invalid.",
+        )
 
 
 def encode_session(session_data: SessionData, *, secret: str) -> str:

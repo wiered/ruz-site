@@ -1,9 +1,11 @@
 """Application settings."""
 
 from functools import lru_cache
+import json
 from pathlib import Path
+from typing import Any
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +44,14 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(
         default=True,
         validation_alias=AliasChoices("COOKIE_SECURE", "cookie_secure"),
+    )
+    trusted_proxy_ips: tuple[str, ...] = Field(
+        default=("127.0.0.1", "::1", "localhost", "testclient"),
+        validation_alias=AliasChoices("TRUSTED_PROXY_IPS", "trusted_proxy_ips"),
+    )
+    allowed_hosts: tuple[str, ...] = Field(
+        default=("127.0.0.1", "localhost", "testserver"),
+        validation_alias=AliasChoices("ALLOWED_HOSTS", "allowed_hosts"),
     )
     redis_url: str = Field(
         default="redis://127.0.0.1:6379/0",
@@ -135,6 +145,19 @@ class Settings(BaseSettings):
         ),
         validation_alias=AliasChoices("LOGGING_FORMAT", "logging_format"),
     )
+
+    @field_validator("trusted_proxy_ips", "allowed_hosts", mode="before")
+    @classmethod
+    def _parse_multi_value_strings(cls, value: Any) -> Any:
+        """Accept JSON arrays or comma-separated env vars for string tuples."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return ()
+            if stripped.startswith("["):
+                return tuple(json.loads(stripped))
+            return tuple(item.strip() for item in stripped.split(",") if item.strip())
+        return value
 
 
 @lru_cache
