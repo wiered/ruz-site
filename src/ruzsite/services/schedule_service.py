@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import date, time
+from datetime import date, time, timedelta
 from pathlib import Path
 
 from fastapi import HTTPException, Request, status
@@ -88,6 +88,23 @@ def _kind_of_work_class(kind_of_work: str) -> str:
     return _KIND_OF_WORK_CLASS_MAP.get(normalized, "lesson-card--default")
 
 
+def _with_sunday_separator_dates(dates: set[date]) -> list[date]:
+    """Include empty Sunday rows so table visually separates study weeks."""
+    if not dates:
+        return []
+
+    expanded_dates = set(dates)
+    current = min(dates)
+    end = max(dates)
+
+    while current <= end:
+        if current.weekday() == 6:
+            expanded_dates.add(current)
+        current += timedelta(days=1)
+
+    return sorted(expanded_dates)
+
+
 def _build_slot_views(
     schedule: list[UserScheduleLesson],
 ) -> tuple[list[ScheduleSlotView], dict[str, ScheduleSlotView]]:
@@ -142,16 +159,16 @@ def build_schedule_table(
             )
         )
 
+    ordered_dates = _with_sunday_separator_dates(
+        {_parse_schedule_date(schedule_date) for schedule_date in rows_by_date}
+    )
     row_views = [
         ScheduleRowView(
-            date_key=schedule_date,
-            date_label=_format_date_label(_parse_schedule_date(schedule_date)),
-            cells=dict(cells),
+            date_key=schedule_date.isoformat(),
+            date_label=_format_date_label(schedule_date),
+            cells=dict(rows_by_date[schedule_date.isoformat()]),
         )
-        for schedule_date, cells in sorted(
-            rows_by_date.items(),
-            key=lambda item: _parse_schedule_date(item[0]),
-        )
+        for schedule_date in ordered_dates
     ]
     return row_views, slot_views
 

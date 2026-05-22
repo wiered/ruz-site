@@ -46,17 +46,59 @@ def test_build_schedule_table_creates_date_rows_and_ordered_slots() -> None:
         "1 пара 08:30-10:00",
         "2 пара 10:10-11:40",
     ]
-    assert [row.date_label for row in rows] == ["Пт, 22.05", "Пн, 25.05"]
+    assert [row.date_label for row in rows] == ["Пт, 22.05", "Вс, 24.05", "Пн, 25.05"]
     assert rows[0].cells["08:30:00-10:00:00"][0].discipline_name == "Math"
-    assert rows[1].cells["10:10:00-11:40:00"][0].discipline_name == "Physics"
+    assert rows[2].cells["10:10:00-11:40:00"][0].discipline_name == "Physics"
     assert (
         rows[0].cells["08:30:00-10:00:00"][0].kind_of_work_class
         == "lesson-card--practice"
     )
     assert (
-        rows[1].cells["10:10:00-11:40:00"][0].kind_of_work_class
+        rows[2].cells["10:10:00-11:40:00"][0].kind_of_work_class
         == "lesson-card--lecture"
     )
+
+
+def test_build_schedule_table_inserts_empty_sunday_rows_between_weeks() -> None:
+    """A Sunday row should be inserted to visually separate adjacent weeks."""
+    schedule: list[UserScheduleLesson] = [
+        {
+            "lesson_id": 1,
+            "date": "2026-05-22",
+            "begin_lesson": "08:30:00",
+            "end_lesson": "10:00:00",
+            "sub_group": 1,
+            "discipline_name": "Math",
+            "kind_of_work": "Практические (семинарские) занятия",
+            "lecturer_short_name": "Dr. A",
+            "lecturer_id": 1,
+            "discipline_id": 11,
+            "auditorium_name": "101",
+            "building": "A",
+            "group_id": 100,
+        },
+        {
+            "lesson_id": 2,
+            "date": "2026-05-25",
+            "begin_lesson": "10:10:00",
+            "end_lesson": "11:40:00",
+            "sub_group": 2,
+            "discipline_name": "Physics",
+            "kind_of_work": "Лекции",
+            "lecturer_short_name": "Dr. B",
+            "lecturer_id": 2,
+            "discipline_id": 22,
+            "auditorium_name": "202",
+            "building": "B",
+            "group_id": 100,
+        },
+    ]
+
+    rows, _ = build_schedule_table(schedule)
+
+    assert [row.date_label for row in rows] == ["Пт, 22.05", "Вс, 24.05", "Пн, 25.05"]
+    assert rows[1].date_key == "2026-05-24"
+    assert rows[1].cells == {}
 
 
 def test_build_schedule_table_maps_known_ruz_kind_of_work_values() -> None:
