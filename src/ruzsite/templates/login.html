@@ -1,1 +1,10 @@
 ﻿
+<section class="card">
+    <h1>Telegram authorization required</h1>
+    {% if state.error_message %}
+    <p class="error">{{ state.error_message }}</p>
+    {% else %}
+    <p class="muted">Open this page from your Telegram bot to authorize automatically.</p>
+    {% endif %}
+    <div id="telegram-auth-status" class="muted"></div>
+</section>

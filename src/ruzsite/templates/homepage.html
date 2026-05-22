@@ -1,1 +1,44 @@
 ﻿
+{% extends "base.html" %}
+
+{% block title %}Ruz Site{% endblock %}
+
+{% block content %}
+{% if state.authenticated and state.telegram_user %}
+<section class="card">
+    <h1>Telegram session</h1>
+    {% if state.error_message %}
+    <p class="error">{{ state.error_message }}</p>
+    {% else %}
+    <p class="ok">Telegram session verified.</p>
+    {% endif %}
+    <ul>
+        <li><strong>Telegram ID:</strong> {{ state.telegram_user.id }}</li>
+        <li><strong>Username:</strong> {{ state.telegram_user.username or "—" }}</li>
+        <li><strong>First name:</strong> {{ state.telegram_user.first_name }}</li>
+        <li><strong>Last name:</strong> {{ state.telegram_user.last_name or "—" }}</li>
+        <li><strong>Language:</strong> {{ state.telegram_user.language_code or "—" }}</li>
+    </ul>
+</section>
+
+<section class="card">
+    <h2>Ruz user</h2>
+    {% if state.ruz_user %}
+    <ul>
+        <li><strong>Ruz user ID:</strong> {{ state.ruz_user.get("id", "—") }}</li>
+        <li><strong>Ruz username:</strong> {{ state.ruz_user.get("username", "—") }}</li>
+        <li><strong>Group OID:</strong> {{ state.ruz_user.get("group_oid", "—") }}</li>
+        <li><strong>Subgroup:</strong> {{ state.ruz_user.get("subgroup", "—") }}</li>
+    </ul>
+    {% else %}
+    <p class="muted">No Ruz user was found for this Telegram user ID yet.</p>
+    {% endif %}
+</section>
+
+<form method="post" action="/auth/logout">
+    <button type="submit">Log out</button>
+</form>
+{% else %}
+{% include "login.html" %}
+{% endif %}
+{% endblock %}
