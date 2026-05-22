@@ -7,9 +7,13 @@ log level name for console output.
 
 import logging
 from logging.config import dictConfig
+from pathlib import Path
 from typing import Any
 
-from settings import settings
+from ruzsite.settings import ROOT, get_settings
+
+settings = get_settings()
+_LOGGING_CONFIGURED = False
 
 console_handler_level = settings.logging_level
 console_handler_format = settings.logging_format
@@ -101,8 +105,13 @@ class ColoredFormatter(logging.Formatter):
 
 def setup_logging() -> None:
     """Apply global logging configuration for the application."""
-    logs_dir = settings.data_dir / "logs"
+    global _LOGGING_CONFIGURED
+    if _LOGGING_CONFIGURED:
+        return
+
+    logs_dir = Path(ROOT, "tmp", "logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
     LOGGING_CONFIG["handlers"]["file_debug"]["filename"] = str(logs_dir / "debug.log")
     LOGGING_CONFIG["handlers"]["file_error"]["filename"] = str(logs_dir / "error.log")
     dictConfig(LOGGING_CONFIG)
+    _LOGGING_CONFIGURED = True
