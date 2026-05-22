@@ -6,9 +6,50 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.136.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "ruz-client",
+    "uvicorn>=0.47.0",
+]
+
+[tool.uv.sources]
+ruz-client = { git = "https://github.com/wiered/ruz-client.git", rev = "main" }
+
+[tool.ruff]
+cache-dir = "tmp/.ruff_cache"
+
+[tool.ruff.lint]
+select = ["D"]
+ignore = ["D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pydoclint]
+style = "google"
+
+arg-type-hints-in-signature = true
+arg-type-hints-in-docstring = false
+
+check-return-types = false
+check-yield-types = false
+
+check-arg-order = true
+check-style-mismatch = true
+
+should-document-star-arguments = true
+omit-stars-when-documenting-varargs = false
+
+require-return-section-when-returning-nothing = false
+require-yield-section-when-yielding-nothing = false
+
+check-class-attributes = true
+should-document-private-class-attributes = false
+
+[dependency-groups]
+dev = [
     "pydoclint>=0.8.4",
     "pytest>=9.0.3",
     "ruff>=0.15.14",
     "ty>=0.0.38",
-    "uvicorn>=0.47.0",
 ]
