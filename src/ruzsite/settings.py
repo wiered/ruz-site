@@ -19,6 +19,30 @@ class Settings(BaseSettings):
 
     api_url: str = Field(validation_alias=AliasChoices("API_URL", "api_url"))
     api_key: str = Field(validation_alias=AliasChoices("API_KEY", "api_key"))
+    telegram_bot_token: str = Field(
+        validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN", "telegram_bot_token")
+    )
+    session_secret: str = Field(
+        validation_alias=AliasChoices("SESSION_SECRET", "session_secret")
+    )
+    telegram_auth_max_age_seconds: int = Field(
+        default=300,
+        validation_alias=AliasChoices(
+            "TELEGRAM_AUTH_MAX_AGE_SECONDS",
+            "telegram_auth_max_age_seconds",
+        ),
+    )
+    session_max_age_seconds: int = Field(
+        default=604800,
+        validation_alias=AliasChoices(
+            "SESSION_MAX_AGE_SECONDS",
+            "session_max_age_seconds",
+        ),
+    )
+    cookie_secure: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("COOKIE_SECURE", "cookie_secure"),
+    )
 
     host: str = Field(
         default="127.0.0.1",
