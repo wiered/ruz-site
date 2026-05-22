@@ -53,3 +53,126 @@ button {
   font-size: 15px;
   cursor: pointer;
 }
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #0f6fff;
+  color: #ffffff;
+  padding: 12px 20px;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.actions {
+  margin: 16px 0 0;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.schedule-table-wrap {
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.schedule-table th,
+.schedule-table td {
+  vertical-align: top;
+  text-align: left;
+  border: 1px solid #d7e0ec;
+  padding: 14px;
+}
+
+.schedule-table thead th {
+  background: #eef4fb;
+}
+
+.schedule-table tbody th {
+  background: #f8fbff;
+  min-width: 110px;
+}
+
+.lesson-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  border-left: 6px solid #98a7bb;
+  background: #f7f9fc;
+}
+
+.lesson-card--lecture {
+  border-left-color: #2563eb;
+  background: #eff6ff;
+}
+
+.lesson-card--practice {
+  border-left-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.lesson-card--seminar {
+  border-left-color: #7c3aed;
+  background: #f5f3ff;
+}
+
+.lesson-card--lab {
+  border-left-color: #c2410c;
+  background: #fff7ed;
+}
+
+.lesson-card--exam {
+  border-left-color: #b91c1c;
+  background: #fef2f2;
+}
+
+.lesson-card--credit {
+  border-left-color: #ca8a04;
+  background: #fefce8;
+}
+
+.lesson-card--graded-credit {
+  border-left-color: #a16207;
+  background: #fef3c7;
+}
+
+.lesson-card--consultation {
+  border-left-color: #be185d;
+  background: #fdf2f8;
+}
+
+.lesson-card--internship {
+  border-left-color: #166534;
+  background: #f0fdf4;
+}
+
+.lesson-card--default {
+  border-left-color: #64748b;
+  background: #f8fafc;
+}
+
+.lesson-card + .lesson-card {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4ebf4;
+}
+
+@media (max-width: 640px) {
+  .page-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

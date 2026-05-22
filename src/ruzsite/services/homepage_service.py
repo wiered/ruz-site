@@ -19,13 +19,13 @@ from ruzsite.settings import ROOT, get_settings
 
 setup_logging()
 logger = logging.getLogger(__name__)
-settings = get_settings()
 templates = Jinja2Templates(directory=Path(ROOT, "src", "ruzsite", "templates"))
 
 
 async def load_ruz_user(user_id: int) -> Mapping[str, object] | None:
     """Fetch the Ruz user for the authenticated Telegram user."""
     logger.debug("Loading Ruz user by Telegram user ID %s", user_id)
+    settings = get_settings()
     config = ClientConfig(base_url=settings.api_url, api_key=settings.api_key)
     try:
         async with RuzClient(config=config) as client:
@@ -50,6 +50,7 @@ def build_page(state: HomepageState) -> str:
 
 async def session_state(request: Request) -> HomepageState:
     """Build homepage state from the current session."""
+    settings = get_settings()
     cookie_value = request.cookies.get(SESSION_COOKIE_NAME)
     if not cookie_value:
         logger.debug("Homepage request has no session cookie")

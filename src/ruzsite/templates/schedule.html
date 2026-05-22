@@ -1,1 +1,65 @@
 ﻿
+{% extends "base.html" %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="page-heading">
+        <div>
+            <h1>Schedule</h1>
+            <p class="muted">Current lessons from Ruz for your account.</p>
+        </div>
+        <a class="button-link" href="/">Back</a>
+    </div>
+
+    {% if state.error_message %}
+    <p class="error">{{ state.error_message }}</p>
+    {% elif not state.schedule_rows %}
+    <p class="muted">No lessons were found.</p>
+    {% else %}
+    <div class="schedule-table-wrap">
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    {% for slot in state.schedule_slots %}
+                    <th>{{ slot.label }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in state.schedule_rows %}
+                <tr>
+                    <th>{{ row.date_label }}</th>
+                    {% for slot in state.schedule_slots %}
+                    <td>
+                        {% set lessons = row.cells.get(slot.key, []) %}
+                        {% if lessons %}
+                            {% for lesson in lessons %}
+                            <article class="lesson-card {{ lesson.kind_of_work_class }}">
+                                <strong>{{ lesson.discipline_name }}</strong>
+                                <span>{{ lesson.kind_of_work }}</span>
+                                <span>{{ lesson.lecturer_short_name or "Преподаватель не указан" }}</span>
+                                <span>
+                                    {{ lesson.auditorium_name or "Аудитория не указана" }}
+                                    {% if lesson.building %}
+                                    , {{ lesson.building }}
+                                    {% endif %}
+                                </span>
+                                <span>Подгруппа {{ lesson.subgroup }}</span>
+                            </article>
+                            {% endfor %}
+                        {% else %}
+                        <span class="muted">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
