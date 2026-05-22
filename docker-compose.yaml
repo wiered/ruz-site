@@ -1,4 +1,4 @@
-﻿services:
+services:
   site:
     build:
       context: .
