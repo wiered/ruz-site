@@ -1,5 +1,6 @@
 """Application module."""
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,11 +10,21 @@ from ruzsite.logging_config import setup_logging
 from ruzsite.routes.auth import router as auth_router
 from ruzsite.routes.homepage import router as homepage_router
 from ruzsite.routes.schedule import router as schedule_router
+from ruzsite.services.redis_service import close_redis
 from ruzsite.settings import ROOT, get_settings
 
 setup_logging()
 get_settings()
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Close shared resources when the app shuts down."""
+    yield
+    await close_redis()
+
+
+app = FastAPI(lifespan=lifespan)
 app.mount(
     "/static",
     StaticFiles(directory=Path(ROOT, "src", "ruzsite", "static")),

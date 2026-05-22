@@ -21,6 +21,12 @@ from ruzsite.schemas.schedule import (
     ScheduleSlotView,
 )
 from ruzsite.services.auth_service import SESSION_COOKIE_NAME, decode_session
+from ruzsite.services.rate_limit_service import (
+    cache_schedule,
+    enforce_rate_limit,
+    get_cached_schedule,
+    get_client_ip,
+)
 from ruzsite.settings import ROOT, get_settings
 
 setup_logging()
@@ -162,6 +168,7 @@ async def load_user_schedule(user_id: int) -> list[UserScheduleLesson]:
 async def schedule_state(request: Request) -> SchedulePageState:
     """Build schedule page state from the current session."""
     settings = get_settings()
+    client_ip = get_client_ip(request)
     cookie_value = request.cookies.get(SESSION_COOKIE_NAME)
     if not cookie_value:
         logger.debug("Schedule request has no session cookie")
@@ -182,6 +189,30 @@ async def schedule_state(request: Request) -> SchedulePageState:
             status_code=status.HTTP_307_TEMPORARY_REDIRECT,
             headers={"Location": "/"},
         ) from exc
+
+    await enforce_rate_limit(
+        scope="schedule:ip",
+        subject=client_ip,
+        limit=settings.schedule_ip_rate_limit,
+        window_seconds=settings.schedule_ip_rate_window_seconds,
+        detail="Too many schedule requests from this IP address.",
+    )
+    await enforce_rate_limit(
+        scope="schedule:user",
+        subject=str(session_data.telegram_user_id),
+        limit=settings.schedule_user_rate_limit,
+        window_seconds=settings.schedule_user_rate_window_seconds,
+        detail="Too many schedule requests for this Telegram user.",
+    )
+
+    cached_schedule = await get_cached_schedule(session_data.telegram_user_id)
+    if cached_schedule is not None:
+        rows, slots = build_schedule_table(cached_schedule)
+        return SchedulePageState(
+            authenticated=True,
+            schedule_rows=rows,
+            schedule_slots=slots,
+        )
 
     try:
         schedule = await load_user_schedule(session_data.telegram_user_id)
@@ -208,6 +239,11 @@ async def schedule_state(request: Request) -> SchedulePageState:
             error_message=f"Could not load schedule: {exc}",
         )
 
+    await cache_schedule(
+        session_data.telegram_user_id,
+        schedule,
+        ttl_seconds=settings.schedule_cache_ttl_seconds,
+    )
     rows, slots = build_schedule_table(schedule)
     return SchedulePageState(
         authenticated=True,

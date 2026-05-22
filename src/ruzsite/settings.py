@@ -43,6 +43,70 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("COOKIE_SECURE", "cookie_secure"),
     )
+    redis_url: str = Field(
+        default="redis://127.0.0.1:6379/0",
+        validation_alias=AliasChoices("REDIS_URL", "redis_url"),
+    )
+    auth_ip_rate_limit: int = Field(
+        default=10,
+        validation_alias=AliasChoices("AUTH_IP_RATE_LIMIT", "auth_ip_rate_limit"),
+    )
+    auth_ip_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "AUTH_IP_RATE_WINDOW_SECONDS",
+            "auth_ip_rate_window_seconds",
+        ),
+    )
+    auth_user_rate_limit: int = Field(
+        default=30,
+        validation_alias=AliasChoices(
+            "AUTH_USER_RATE_LIMIT",
+            "auth_user_rate_limit",
+        ),
+    )
+    auth_user_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias=AliasChoices(
+            "AUTH_USER_RATE_WINDOW_SECONDS",
+            "auth_user_rate_window_seconds",
+        ),
+    )
+    schedule_cache_ttl_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices(
+            "SCHEDULE_CACHE_TTL_SECONDS",
+            "schedule_cache_ttl_seconds",
+        ),
+    )
+    schedule_user_rate_limit: int = Field(
+        default=30,
+        validation_alias=AliasChoices(
+            "SCHEDULE_USER_RATE_LIMIT",
+            "schedule_user_rate_limit",
+        ),
+    )
+    schedule_user_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SCHEDULE_USER_RATE_WINDOW_SECONDS",
+            "schedule_user_rate_window_seconds",
+        ),
+    )
+    schedule_ip_rate_limit: int = Field(
+        default=120,
+        validation_alias=AliasChoices(
+            "SCHEDULE_IP_RATE_LIMIT",
+            "schedule_ip_rate_limit",
+        ),
+    )
+    schedule_ip_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SCHEDULE_IP_RATE_WINDOW_SECONDS",
+            "schedule_ip_rate_window_seconds",
+        ),
+    )
 
     host: str = Field(
         default="127.0.0.1",

@@ -14,6 +14,7 @@ from ruzsite.services.auth_service import (
     extract_init_data,
     verify_telegram_init_data,
 )
+from ruzsite.services.rate_limit_service import enforce_rate_limit, get_client_ip
 from ruzsite.settings import get_settings
 
 setup_logging()
@@ -25,11 +26,26 @@ settings = get_settings()
 @router.post("/telegram")
 async def telegram_auth(request: Request) -> JSONResponse:
     """Verify Telegram Mini App init data and create a signed app session."""
+    client_ip = get_client_ip(request)
+    await enforce_rate_limit(
+        scope="auth:ip",
+        subject=client_ip,
+        limit=settings.auth_ip_rate_limit,
+        window_seconds=settings.auth_ip_rate_window_seconds,
+        detail="Too many Telegram auth attempts from this IP address.",
+    )
     init_data = await extract_init_data(request)
     telegram_user = verify_telegram_init_data(
         init_data,
         bot_token=settings.telegram_bot_token,
         max_age_seconds=settings.telegram_auth_max_age_seconds,
+    )
+    await enforce_rate_limit(
+        scope="auth:user",
+        subject=str(telegram_user.id),
+        limit=settings.auth_user_rate_limit,
+        window_seconds=settings.auth_user_rate_window_seconds,
+        detail="Too many Telegram auth attempts for this Telegram user.",
     )
     logger.info("Telegram auth verified for user ID %s", telegram_user.id)
     session = SessionData(
