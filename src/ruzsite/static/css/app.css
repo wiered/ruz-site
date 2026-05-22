@@ -4,23 +4,23 @@
 ───────────────────────────────────────────── */
 
 :root {
-  --bg:              #0c0c0f;
-  --bg-elevated:     #111115;
-  --surface:         #17171c;
-  --surface-hover:   #1e1e25;
-  --surface-active:  #22222a;
+  --bg:              #1a2026;
+  --bg-elevated:     #1f262d;
+  --surface:         #242c34;
+  --surface-hover:   #2b343d;
+  --surface-active:  #323c46;
 
-  --border:          #26262e;
-  --border-subtle:   #1c1c23;
+  --border:          #38434f;
+  --border-subtle:   #28323b;
 
-  --text-primary:    #eeeef0;
-  --text-secondary:  #8b8b96;
-  --text-muted:      #46464f;
+  --text-primary:    #e6ebf0;
+  --text-secondary:  #8a96a3;
+  --text-muted:      #4d5867;
 
-  --accent:          #6366f1;
-  --accent-hover:    #818cf8;
-  --accent-subtle:   rgba(99, 102, 241, 0.10);
-  --accent-border:   rgba(99, 102, 241, 0.25);
+  --accent:          #5b8def;
+  --accent-hover:    #7aa3f5;
+  --accent-subtle:   rgba(91, 141, 239, 0.12);
+  --accent-border:   rgba(91, 141, 239, 0.28);
 
   --green:           #22c55e;
   --green-subtle:    rgba(34, 197, 94, 0.10);
@@ -428,7 +428,7 @@ body {
   line-height: 1.4;
 }
 
-.lesson-card--lecture      { border-left-color: #6366f1; background: rgba(99,102,241,0.07); }
+.lesson-card--lecture      { border-left-color: #5b8def; background: rgba(91,141,239,0.08); }
 .lesson-card--practice     { border-left-color: #10b981; background: rgba(16,185,129,0.07); }
 .lesson-card--seminar      { border-left-color: #8b5cf6; background: rgba(139,92,246,0.07); }
 .lesson-card--lab          { border-left-color: #f97316; background: rgba(249,115,22,0.07); }
