@@ -242,7 +242,7 @@ async def schedule_state(request: Request) -> SchedulePageState:
             authenticated=True,
             schedule_rows=[],
             schedule_slots=[],
-            error_message=f"Could not load schedule: {exc}",
+            error_message=f"Could not load schedule",
         )
     except (RuzAuthError, RuzClientError) as exc:
         logger.exception(
@@ -253,7 +253,7 @@ async def schedule_state(request: Request) -> SchedulePageState:
             authenticated=True,
             schedule_rows=[],
             schedule_slots=[],
-            error_message=f"Could not load schedule: {exc}",
+            error_message=f"Could not load schedule",
         )
 
     await cache_schedule(

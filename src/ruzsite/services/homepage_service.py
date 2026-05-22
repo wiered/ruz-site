@@ -103,7 +103,7 @@ async def session_state(request: Request) -> HomepageState:
             authenticated=True,
             telegram_user=telegram_user,
             ruz_user=None,
-            error_message=f"Could not load Ruz user: {exc}",
+            error_message=f"Could not load Ruz user",
         )
 
     return HomepageState(
