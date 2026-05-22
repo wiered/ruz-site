@@ -3,5 +3,7 @@
 ## Run
 
 ```powershell
-uvicorn src.ruzsite.main:app --reload
+python -m ruzsite.main
 ```
+
+`src/ruzsite/main.py` imports `app` from `src/ruzsite/app.py` and starts Uvicorn.
