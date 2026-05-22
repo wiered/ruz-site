@@ -1,10 +1,16 @@
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+"""Application entrypoint."""
 
+import uvicorn
 
-app = FastAPI()
+from ruzsite.app import app
+from ruzsite.settings import get_settings
 
+settings = get_settings()
 
-@app.get("/", response_class=PlainTextResponse)
-async def homepage() -> str:
-    return "hello world"
+if __name__ == "__main__":
+    uvicorn.run(
+        "ruzsite.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True
+    )
