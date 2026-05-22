@@ -89,7 +89,7 @@ def verify_telegram_init_data(
         logger.warning("Telegram initData is expired or from the future")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Telegram initData is expired.",
+            detail="Telegram initData is expired. Try reloading page.",
         )
 
     user_raw = parsed.get("user")
@@ -193,7 +193,7 @@ def decode_session(
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session cookie is expired.",
+            detail="Session cookie is expired. Try reloading page.",
         )
     logger.debug(
         "Decoded valid session cookie for Telegram user ID %s",
