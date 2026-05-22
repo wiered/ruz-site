@@ -40,7 +40,7 @@ class Settings(BaseSettings):
         ),
     )
     cookie_secure: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices("COOKIE_SECURE", "cookie_secure"),
     )
     redis_url: str = Field(
