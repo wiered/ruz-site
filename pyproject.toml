@@ -17,9 +17,6 @@ dependencies = [
     "uvicorn>=0.47.0",
 ]
 
-[tool.uv.sources]
-ruz-client = { git = "https://github.com/wiered/ruz-client.git", rev = "main" }
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/ruzsite"]
 
@@ -53,6 +50,9 @@ require-yield-section-when-yielding-nothing = false
 
 check-class-attributes = true
 should-document-private-class-attributes = false
+
+[tool.uv.sources]
+ruz-client = { git = "https://github.com/wiered/ruz-client.git", rev = "main" }
 
 [dependency-groups]
 dev = [
