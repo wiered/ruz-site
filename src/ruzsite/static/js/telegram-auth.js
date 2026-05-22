@@ -7,7 +7,7 @@ function setStatus(message, isError = false) {
   }
 
   statusNode.textContent = message;
-  statusNode.className = isError ? "error" : "muted";
+  statusNode.style.color = isError ? "var(--red)" : "var(--text-muted)";
 }
 
 async function bootstrapTelegramAuth() {

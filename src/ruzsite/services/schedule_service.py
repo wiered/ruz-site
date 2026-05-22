@@ -66,6 +66,11 @@ def _format_date_label(value: date) -> str:
     return f"{_RUSSIAN_WEEKDAYS[value.weekday()]}, {value:%d.%m}"
 
 
+def _format_schedule_time(value: str) -> str:
+    """Format schedule time without seconds."""
+    return _parse_schedule_time(value).strftime("%H:%M")
+
+
 def _slot_key(begin_lesson: str, end_lesson: str) -> str:
     """Build a stable slot key."""
     return f"{begin_lesson}-{end_lesson}"
@@ -88,7 +93,10 @@ def _build_slot_views(
     slot_views = [
         ScheduleSlotView(
             key=_slot_key(begin_lesson, end_lesson),
-            label=f"{index} пара {begin_lesson}-{end_lesson}",
+            label=(
+                f"{index} пара "
+                f"{_format_schedule_time(begin_lesson)}-{_format_schedule_time(end_lesson)}"
+            ),
         )
         for index, (begin_lesson, end_lesson) in enumerate(ordered_slots, start=1)
     ]
@@ -213,4 +221,5 @@ def build_page(state: SchedulePageState) -> str:
     return templates.get_template("schedule.html").render(
         authenticated=state.authenticated,
         state=state,
+        current_page="schedule",
     )

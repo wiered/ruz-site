@@ -43,8 +43,8 @@ def test_build_schedule_table_creates_date_rows_and_ordered_slots() -> None:
     rows, slots = build_schedule_table(schedule)
 
     assert [slot.label for slot in slots] == [
-        "1 пара 08:30:00-10:00:00",
-        "2 пара 10:10:00-11:40:00",
+        "1 пара 08:30-10:00",
+        "2 пара 10:10-11:40",
     ]
     assert [row.date_label for row in rows] == ["Пт, 22.05", "Пн, 25.05"]
     assert rows[0].cells["08:30:00-10:00:00"][0].discipline_name == "Math"

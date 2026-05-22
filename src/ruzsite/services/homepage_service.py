@@ -45,6 +45,7 @@ def build_page(state: HomepageState) -> str:
     return templates.get_template("homepage.html").render(
         authenticated=state.authenticated,
         state=state,
+        current_page="home",
     )
 
 

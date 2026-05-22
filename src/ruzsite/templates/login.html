@@ -1,10 +1,16 @@
-﻿
-<section class="card">
-    <h1>Telegram authorization required</h1>
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-hover)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <div class="login-title">Sign in with Telegram</div>
     {% if state.error_message %}
-    <p class="error">{{ state.error_message }}</p>
+    <div class="login-desc text-error">{{ state.error_message }}</div>
     {% else %}
-    <p class="muted">Open this page from your Telegram bot to authorize automatically.</p>
+    <div class="login-desc">Open this page from your Telegram bot to authenticate automatically.</div>
     {% endif %}
-    <div id="telegram-auth-status" class="muted"></div>
-</section>
+    <div id="telegram-auth-status"></div>
+  </div>
+</div>
