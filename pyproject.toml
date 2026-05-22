@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.136.1",
+    "jinja2>=3.1.6",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "ruz-client",
@@ -55,6 +56,7 @@ should-document-private-class-attributes = false
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pydoclint>=0.8.4",
     "pytest>=9.0.3",
     "ruff>=0.15.14",
