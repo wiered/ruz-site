@@ -8,108 +8,110 @@
 {% endblock %}
 
 {% block content %}
-  {% if state.success_message %}
-  <div class="card settings-banner settings-banner-success">
-    {{ state.success_message }}
-  </div>
-  {% endif %}
+  <div class="settings-page">
+    {% if state.success_message %}
+    <div class="card settings-banner settings-banner-success">
+      {{ state.success_message }}
+    </div>
+    {% endif %}
 
-  {% if state.error_message %}
-  <div class="card settings-banner settings-banner-error">
-    {{ state.error_message }}
-  </div>
-  {% endif %}
+    {% if state.error_message %}
+    <div class="card settings-banner settings-banner-error">
+      {{ state.error_message }}
+    </div>
+    {% endif %}
 
-  <section class="card-section">
-    <header class="card-header">
-      <div class="card-header-title">Appearance</div>
-    </header>
-    <div class="card-body">
-      <div class="settings-row">
-        <div class="theme-choice-group" role="radiogroup" aria-label="Theme">
-          <button type="button" class="theme-choice" data-theme-choice="system" role="radio" aria-checked="false">
-            System
-          </button>
-          <button type="button" class="theme-choice" data-theme-choice="dark" role="radio" aria-checked="false">
-            Dark
-          </button>
-          <button type="button" class="theme-choice" data-theme-choice="light" role="radio" aria-checked="false">
-            Light
-          </button>
+    <section class="card-section">
+      <header class="card-header">
+        <div class="card-header-title">Appearance</div>
+      </header>
+      <div class="card-body">
+        <div class="settings-row">
+          <div class="theme-choice-group" role="radiogroup" aria-label="Theme">
+            <button type="button" class="theme-choice" data-theme-choice="system" role="radio" aria-checked="false">
+              System
+            </button>
+            <button type="button" class="theme-choice" data-theme-choice="dark" role="radio" aria-checked="false">
+              Dark
+            </button>
+            <button type="button" class="theme-choice" data-theme-choice="light" role="radio" aria-checked="false">
+              Light
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="card-section settings-section">
-    <header class="card-header">
-      <div class="card-header-title">Group</div>
-    </header>
-    <div class="card-body">
-      <div class="settings-stack">
-        <div class="settings-current-group">
-          <div class="settings-current-group-meta">
-            <div class="settings-current-group-name">{{ state.current_group_name or "No group selected" }}</div>
-            <div class="settings-current-group-subtle">
-              OID: {{ state.current_group_oid or "—" }}
-            </div>
-          </div>
-          <form method="post" action="/settings/subgroup" class="settings-subgroup-form">
-            <div class="settings-subgroup-label">Subgroup</div>
-            <div class="theme-choice-group settings-subgroup-group" role="group" aria-label="Subgroup">
-              {% for subgroup_value in [0, 1, 2] %}
-              <button
-                type="submit"
-                class="theme-choice"
-                name="subgroup"
-                value="{{ subgroup_value }}"
-                data-active="{{ 'true' if state.current_subgroup == subgroup_value else 'false' }}"
-              >
-                {{ subgroup_value }}
-              </button>
-              {% endfor %}
-            </div>
-          </form>
-        </div>
-
-        <form method="get" action="/settings" class="settings-search-form">
-          <label class="settings-search-label" for="group-query">Find a new group</label>
-          <div class="settings-search-row">
-            <input
-              id="group-query"
-              name="q"
-              type="search"
-              value="{{ state.group_query }}"
-              class="settings-search-input"
-              placeholder="Enter group name"
-              autocomplete="off"
-            >
-            <button type="submit" class="btn btn-primary btn-md">Search</button>
-          </div>
-        </form>
-
-        {% if state.group_query and not state.group_results %}
-        <p class="settings-empty">No groups found for “{{ state.group_query }}”.</p>
-        {% endif %}
-
-        {% if state.group_results %}
-        <div class="settings-results">
-          {% for group in state.group_results %}
-          <form method="post" action="/settings/group" class="settings-result-card">
-            <input type="hidden" name="group_oid" value="{{ group.oid }}">
-            <input type="hidden" name="group_label" value="{{ group.name }}">
-            <div class="settings-result-copy">
-              <div class="settings-result-title">{{ group.name }}</div>
-              <div class="settings-result-meta">
-                OID: {{ group.oid }}{% if group.faculty_name %} · {{ group.faculty_name }}{% endif %}
+    <section class="card-section settings-section">
+      <header class="card-header">
+        <div class="card-header-title">Group</div>
+      </header>
+      <div class="card-body">
+        <div class="settings-stack">
+          <div class="settings-current-group">
+            <div class="settings-current-group-meta">
+              <div class="settings-current-group-name">{{ state.current_group_name or "No group selected" }}</div>
+              <div class="settings-current-group-subtle">
+                OID: {{ state.current_group_oid or "—" }}
               </div>
             </div>
-            <button type="submit" class="btn btn-ghost btn-md">Select</button>
+            <form method="post" action="/settings/subgroup" class="settings-subgroup-form">
+              <div class="settings-subgroup-label">Subgroup</div>
+              <div class="theme-choice-group settings-subgroup-group" role="group" aria-label="Subgroup">
+                {% for subgroup_value in [0, 1, 2] %}
+                <button
+                  type="submit"
+                  class="theme-choice"
+                  name="subgroup"
+                  value="{{ subgroup_value }}"
+                  data-active="{{ 'true' if state.current_subgroup == subgroup_value else 'false' }}"
+                >
+                  {{ subgroup_value }}
+                </button>
+                {% endfor %}
+              </div>
+            </form>
+          </div>
+
+          <form method="get" action="/settings" class="settings-search-form">
+            <label class="settings-search-label" for="group-query">Find a new group</label>
+            <div class="settings-search-row">
+              <input
+                id="group-query"
+                name="q"
+                type="search"
+                value="{{ state.group_query }}"
+                class="settings-search-input"
+                placeholder="Enter group name"
+                autocomplete="off"
+              >
+              <button type="submit" class="btn btn-primary btn-md">Search</button>
+            </div>
           </form>
-          {% endfor %}
+
+          {% if state.group_query and not state.group_results %}
+          <p class="settings-empty">No groups found for “{{ state.group_query }}”.</p>
+          {% endif %}
+
+          {% if state.group_results %}
+          <div class="settings-results">
+            {% for group in state.group_results %}
+            <form method="post" action="/settings/group" class="settings-result-card">
+              <input type="hidden" name="group_oid" value="{{ group.oid }}">
+              <input type="hidden" name="group_label" value="{{ group.name }}">
+              <div class="settings-result-copy">
+                <div class="settings-result-title">{{ group.name }}</div>
+                <div class="settings-result-meta">
+                  OID: {{ group.oid }}{% if group.faculty_name %} · {{ group.faculty_name }}{% endif %}
+                </div>
+              </div>
+              <button type="submit" class="btn btn-ghost btn-md">Select</button>
+            </form>
+            {% endfor %}
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 {% endblock %}

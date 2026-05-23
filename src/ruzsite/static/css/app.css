@@ -685,6 +685,10 @@ html[data-theme="light"] .theme-toggle {
   width: 100%;
 }
 
+.settings-page button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .settings-section {
   margin-top: 12px;
 }
