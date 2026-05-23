@@ -3,10 +3,10 @@
 from functools import lru_cache
 import json
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import AliasChoices, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -45,11 +45,11 @@ class Settings(BaseSettings):
         default=True,
         validation_alias=AliasChoices("COOKIE_SECURE", "cookie_secure"),
     )
-    trusted_proxy_ips: tuple[str, ...] = Field(
+    trusted_proxy_ips: Annotated[tuple[str, ...], NoDecode] = Field(
         default=("127.0.0.1", "::1", "localhost", "testclient"),
         validation_alias=AliasChoices("TRUSTED_PROXY_IPS", "trusted_proxy_ips"),
     )
-    allowed_hosts: tuple[str, ...] = Field(
+    allowed_hosts: Annotated[tuple[str, ...], NoDecode] = Field(
         default=("127.0.0.1", "localhost", "testserver"),
         validation_alias=AliasChoices("ALLOWED_HOSTS", "allowed_hosts"),
     )
