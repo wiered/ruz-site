@@ -31,6 +31,7 @@
 **/.mypy_cache
 **/.env
 **/*.md
+!README.md
 .env
 tmp/logs
 .venv
