@@ -33,6 +33,9 @@ class RedisProtocol(Protocol):
     async def set(self, name: str, value: str, ex: int | None = None) -> bool | None:
         """Set a cached string value with an optional expiration."""
 
+    async def delete(self, *names: str) -> int:
+        """Delete one or more keys and return the number removed."""
+
 
 def get_client_ip(request: Request) -> str:
     """Return the best-effort client IP for the request."""
@@ -157,6 +160,12 @@ async def cache_schedule(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         ex=ttl_seconds,
     )
+
+
+async def invalidate_cached_schedule(telegram_user_id: int) -> None:
+    """Delete a cached schedule snapshot for a Telegram user."""
+    redis = await _redis()
+    await redis.delete(_schedule_cache_key(telegram_user_id))
 
 
 def _coerce_optional_int(value: object) -> int | None:

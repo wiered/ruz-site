@@ -62,6 +62,17 @@ class FakeRedis:
             self.ttls[name] = ex
         return True
 
+    async def delete(self, *names: str) -> int:
+        """Delete cached keys and return the number removed."""
+        deleted = 0
+        for name in names:
+            if name in self.values:
+                del self.values[name]
+                deleted += 1
+            self.ttls.pop(name, None)
+            self.counters.pop(name, None)
+        return deleted
+
     async def ping(self) -> bool:
         """Report that Redis is reachable."""
         return True
@@ -92,6 +103,10 @@ class UnavailableRedis:
 
     async def set(self, name: str, value: str, ex: int | None = None) -> bool:
         """Raise a connection error for cache writes."""
+        raise RedisConnectionError("redis offline")
+
+    async def delete(self, *names: str) -> int:
+        """Raise a connection error for cache deletes."""
         raise RedisConnectionError("redis offline")
 
 

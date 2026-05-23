@@ -13,6 +13,7 @@ from ruzsite.routes.auth import router as auth_router
 from ruzsite.routes.health import router as health_router
 from ruzsite.routes.homepage import router as homepage_router
 from ruzsite.routes.schedule import router as schedule_router
+from ruzsite.routes.settings import router as settings_router
 from ruzsite.services.redis_service import close_redis, ensure_redis_available
 from ruzsite.settings import ROOT, get_settings
 
@@ -62,3 +63,4 @@ app.include_router(health_router)
 app.include_router(homepage_router)
 app.include_router(auth_router)
 app.include_router(schedule_router)
+app.include_router(settings_router)
