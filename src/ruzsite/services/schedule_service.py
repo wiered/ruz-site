@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from collections import defaultdict
 from datetime import date, time, timedelta
 from pathlib import Path
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
@@ -15,11 +17,13 @@ from ruzclient.http.endpoints.schedule import UserScheduleLesson
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.schedule import (
+    ScheduleCacheSnapshot,
     ScheduleLessonView,
     SchedulePageState,
     ScheduleRowView,
     ScheduleSlotView,
 )
+from ruzsite.services.homepage_service import load_ruz_user
 from ruzsite.services.auth_service import SESSION_COOKIE_NAME, decode_session
 from ruzsite.services.rate_limit_service import (
     cache_schedule,
@@ -86,6 +90,61 @@ def _kind_of_work_class(kind_of_work: str) -> str:
     """Return CSS class for lesson type color coding."""
     normalized = kind_of_work.strip().casefold()
     return _KIND_OF_WORK_CLASS_MAP.get(normalized, "lesson-card--default")
+
+
+def _coerce_optional_int(value: object) -> int | None:
+    """Convert API values to integers when possible."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _extract_current_group_identity(
+    ruz_user: Mapping[str, object] | None,
+) -> tuple[Any | None, int | None]:
+    """Return the current group identity fields from a RUZ user payload."""
+    if ruz_user is None:
+        return None, None
+
+    group_id = ruz_user.get("group_id")
+    if group_id is None:
+        group_id = ruz_user.get("group_oid")
+    return group_id, _coerce_optional_int(ruz_user.get("subgroup"))
+
+
+def _extract_schedule_group_identity(
+    schedule: list[UserScheduleLesson],
+) -> tuple[Any | None, int | None]:
+    """Return group identity fields derived from schedule lessons."""
+    if not schedule:
+        return None, None
+
+    first_lesson = schedule[0]
+    return first_lesson.get("group_id"), _coerce_optional_int(
+        first_lesson.get("sub_group")
+    )
+
+
+def _cached_schedule_matches_user(
+    cached_schedule: ScheduleCacheSnapshot,
+    ruz_user: Mapping[str, object] | None,
+) -> bool:
+    """Decide whether a cached schedule still matches the current RUZ group."""
+    if cached_schedule.group_id is None and cached_schedule.subgroup is None:
+        return False
+
+    current_group_id, current_subgroup = _extract_current_group_identity(ruz_user)
+    if current_group_id is None and current_subgroup is None:
+        return True
+    if current_group_id is not None and cached_schedule.group_id != current_group_id:
+        return False
+    if current_subgroup is not None and cached_schedule.subgroup != current_subgroup:
+        return False
+    return True
 
 
 def _with_sunday_separator_dates(dates: set[date]) -> list[date]:
@@ -224,12 +283,26 @@ async def schedule_state(request: Request) -> SchedulePageState:
 
     cached_schedule = await get_cached_schedule(session_data.telegram_user_id)
     if cached_schedule is not None:
-        rows, slots = build_schedule_table(cached_schedule)
-        return SchedulePageState(
-            authenticated=True,
-            schedule_rows=rows,
-            schedule_slots=slots,
-        )
+        try:
+            ruz_user = await load_ruz_user(session_data.telegram_user_id)
+        except (RuzAuthError, RuzClientError, RuzHttpError):
+            logger.warning(
+                "Could not validate cached schedule identity for Telegram user ID %s",
+                session_data.telegram_user_id,
+                exc_info=True,
+            )
+        else:
+            if _cached_schedule_matches_user(cached_schedule, ruz_user):
+                rows, slots = build_schedule_table(cached_schedule.schedule)
+                return SchedulePageState(
+                    authenticated=True,
+                    schedule_rows=rows,
+                    schedule_slots=slots,
+                )
+            logger.info(
+                "Discarded stale cached schedule for Telegram user ID %s after group change",
+                session_data.telegram_user_id,
+            )
 
     try:
         schedule = await load_user_schedule(session_data.telegram_user_id)
@@ -256,10 +329,13 @@ async def schedule_state(request: Request) -> SchedulePageState:
             error_message=f"Could not load schedule",
         )
 
+    schedule_group_id, schedule_subgroup = _extract_schedule_group_identity(schedule)
     await cache_schedule(
         session_data.telegram_user_id,
         schedule,
         ttl_seconds=settings.schedule_cache_ttl_seconds,
+        group_id=schedule_group_id,
+        subgroup=schedule_subgroup,
     )
     rows, slots = build_schedule_table(schedule)
     return SchedulePageState(

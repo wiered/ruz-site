@@ -341,7 +341,12 @@ def test_schedule_state_uses_cached_schedule_after_first_request(
         load_calls.append(user_id)
         return schedule_payload
 
+    async def fake_load_ruz_user(user_id: int) -> dict[str, Any]:
+        assert user_id == 555
+        return {"group_oid": 100, "subgroup": 1}
+
     monkeypatch.setattr(schedule_service, "load_user_schedule", fake_load_user_schedule)
+    monkeypatch.setattr(schedule_service, "load_ruz_user", fake_load_ruz_user)
 
     first_state = run(schedule_service.schedule_state(request))
     second_state = run(schedule_service.schedule_state(request))
@@ -356,6 +361,118 @@ def test_schedule_state_uses_cached_schedule_after_first_request(
     )
     assert load_calls == [555]
     assert fake_redis.ttls["cache:schedule:555"] == settings.schedule_cache_ttl_seconds
+    assert json.loads(fake_redis.values["cache:schedule:555"]) == {
+        "schedule": schedule_payload,
+        "group_id": 100,
+        "subgroup": 1,
+    }
+
+
+def test_schedule_state_refreshes_cache_after_group_change(
+    fake_redis: FakeRedis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cached schedule should be bypassed when the user's current group changed."""
+    settings = get_settings()
+    session = SessionData(
+        telegram_user_id=555,
+        first_name="Captain",
+        username="captain",
+        issued_at=int(time.time()),
+    )
+    cookie = encode_session(session, secret=settings.session_secret)
+    request = Request(
+        {
+            "type": "http",
+            "headers": [(b"cookie", f"{SESSION_COOKIE_NAME}={cookie}".encode("utf-8"))],
+            "client": ("127.0.0.1", 12345),
+        }
+    )
+    load_calls: list[int] = []
+    schedule_payloads: list[list[dict[str, Any]]] = [
+        [
+            {
+                "lesson_id": 1,
+                "date": "2026-05-22",
+                "begin_lesson": "08:30:00",
+                "end_lesson": "10:00:00",
+                "sub_group": 1,
+                "discipline_name": "Math",
+                "kind_of_work": "Лекции",
+                "lecturer_short_name": "Dr. A",
+                "lecturer_id": 1,
+                "discipline_id": 11,
+                "auditorium_name": "101",
+                "building": "A",
+                "group_id": 100,
+            }
+        ],
+        [
+            {
+                "lesson_id": 2,
+                "date": "2026-05-22",
+                "begin_lesson": "10:10:00",
+                "end_lesson": "11:40:00",
+                "sub_group": 2,
+                "discipline_name": "Physics",
+                "kind_of_work": "Практические (семинарские) занятия",
+                "lecturer_short_name": "Dr. B",
+                "lecturer_id": 2,
+                "discipline_id": 22,
+                "auditorium_name": "202",
+                "building": "B",
+                "group_id": 200,
+            }
+        ],
+    ]
+    ruz_users: list[dict[str, Any]] = [
+        {"group_oid": 200, "subgroup": 2},
+    ]
+
+    async def fake_load_user_schedule(user_id: int) -> list[dict[str, Any]]:
+        load_calls.append(user_id)
+        return schedule_payloads.pop(0)
+
+    async def fake_load_ruz_user(user_id: int) -> dict[str, Any]:
+        assert user_id == 555
+        return ruz_users.pop(0)
+
+    monkeypatch.setattr(schedule_service, "load_user_schedule", fake_load_user_schedule)
+    monkeypatch.setattr(schedule_service, "load_ruz_user", fake_load_ruz_user)
+
+    first_state = run(schedule_service.schedule_state(request))
+    second_state = run(schedule_service.schedule_state(request))
+
+    assert (
+        first_state.schedule_rows[0].cells["08:30:00-10:00:00"][0].discipline_name
+        == "Math"
+    )
+    assert (
+        second_state.schedule_rows[0].cells["10:10:00-11:40:00"][0].discipline_name
+        == "Physics"
+    )
+    assert load_calls == [555, 555]
+    assert json.loads(fake_redis.values["cache:schedule:555"]) == {
+        "schedule": [
+            {
+                "lesson_id": 2,
+                "date": "2026-05-22",
+                "begin_lesson": "10:10:00",
+                "end_lesson": "11:40:00",
+                "sub_group": 2,
+                "discipline_name": "Physics",
+                "kind_of_work": "Практические (семинарские) занятия",
+                "lecturer_short_name": "Dr. B",
+                "lecturer_id": 2,
+                "discipline_id": 22,
+                "auditorium_name": "202",
+                "building": "B",
+                "group_id": 200,
+            }
+        ],
+        "group_id": 200,
+        "subgroup": 2,
+    }
 
 
 def test_app_startup_raises_human_readable_error_when_redis_is_unavailable(

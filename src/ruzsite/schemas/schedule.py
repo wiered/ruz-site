@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
+
+from ruzclient.http.endpoints.schedule import UserScheduleLesson
 
 
 @dataclass(slots=True, frozen=True)
@@ -43,3 +46,12 @@ class SchedulePageState:
     schedule_rows: list[ScheduleRowView]
     schedule_slots: list[ScheduleSlotView]
     error_message: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class ScheduleCacheSnapshot:
+    """Serialized schedule cache payload with user group identity metadata."""
+
+    schedule: list[UserScheduleLesson]
+    group_id: Any | None = None
+    subgroup: int | None = None
