@@ -3,8 +3,8 @@
 {% block title %}Settings · RUZ{% endblock %}
 
 {% block page_heading %}
-  <div class="page-title">Settings</div>
-  <div class="page-subtitle">Preferences for this device</div>
+  <div class="page-title">Настройки</div>
+  <div class="page-subtitle">Настройки MiniApp</div>
 {% endblock %}
 
 {% block content %}
@@ -23,19 +23,19 @@
 
     <section class="card-section">
       <header class="card-header">
-        <div class="card-header-title">Appearance</div>
+        <div class="card-header-title">Тема</div>
       </header>
       <div class="card-body">
         <div class="settings-row">
           <div class="theme-choice-group" role="radiogroup" aria-label="Theme">
             <button type="button" class="theme-choice" data-theme-choice="system" role="radio" aria-checked="false">
-              System
+              Системная
             </button>
             <button type="button" class="theme-choice" data-theme-choice="dark" role="radio" aria-checked="false">
-              Dark
+              Тёмная
             </button>
             <button type="button" class="theme-choice" data-theme-choice="light" role="radio" aria-checked="false">
-              Light
+              Светлая
             </button>
           </div>
         </div>
@@ -54,19 +54,19 @@
 
     <section class="card-section settings-section">
       <header class="card-header">
-        <div class="card-header-title">Group</div>
+        <div class="card-header-title">Группа</div>
       </header>
       <div class="card-body">
         <div class="settings-stack">
           <div class="settings-current-group">
             <div class="settings-current-group-meta">
-              <div class="settings-current-group-name">{{ state.current_group_name or "No group selected" }}</div>
+              <div class="settings-current-group-name">{{ state.current_group_name or "Группа не выбрана" }}</div>
               <div class="settings-current-group-subtle">
                 OID: {{ state.current_group_oid or "—" }}
               </div>
             </div>
             <form method="post" action="/settings/subgroup" class="settings-subgroup-form">
-              <div class="settings-subgroup-label">Subgroup</div>
+              <div class="settings-subgroup-label">Подгруппа</div>
               <div class="theme-choice-group settings-subgroup-group" role="group" aria-label="Subgroup">
                 {% for subgroup_value in [0, 1, 2] %}
                 <button
@@ -84,7 +84,7 @@
           </div>
 
           <form method="get" action="/settings" class="settings-search-form">
-            <label class="settings-search-label" for="group-query">Find a new group</label>
+            <label class="settings-search-label" for="group-query">Найти и установить группу</label>
             <div class="settings-search-row">
               <input
                 id="group-query"
@@ -92,10 +92,10 @@
                 type="search"
                 value="{{ state.group_query }}"
                 class="settings-search-input"
-                placeholder="Enter group name"
+                placeholder="Введите имя группы"
                 autocomplete="off"
               >
-              <button type="submit" class="btn btn-primary btn-md">Search</button>
+              <button type="submit" class="btn btn-primary btn-md">Поиск</button>
             </div>
           </form>
 
