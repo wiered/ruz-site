@@ -3,7 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.services.homepage_service import build_page, session_state
@@ -24,3 +24,9 @@ async def homepage(request: Request) -> HTMLResponse:
 async def login_page() -> RedirectResponse:
     """Redirect login requests to the homepage."""
     return RedirectResponse(url="/", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt() -> PlainTextResponse:
+    """Prevent well-behaved crawlers from indexing the site."""
+    return PlainTextResponse("User-agent: *\nDisallow: /\n")
