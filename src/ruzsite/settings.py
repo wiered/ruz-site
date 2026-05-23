@@ -117,6 +117,34 @@ class Settings(BaseSettings):
             "schedule_ip_rate_window_seconds",
         ),
     )
+    settings_group_change_rate_limit: int = Field(
+        default=10,
+        validation_alias=AliasChoices(
+            "SETTINGS_GROUP_CHANGE_RATE_LIMIT",
+            "settings_group_change_rate_limit",
+        ),
+    )
+    settings_group_change_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SETTINGS_GROUP_CHANGE_RATE_WINDOW_SECONDS",
+            "settings_group_change_rate_window_seconds",
+        ),
+    )
+    settings_subgroup_change_rate_limit: int = Field(
+        default=10,
+        validation_alias=AliasChoices(
+            "SETTINGS_SUBGROUP_CHANGE_RATE_LIMIT",
+            "settings_subgroup_change_rate_limit",
+        ),
+    )
+    settings_subgroup_change_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SETTINGS_SUBGROUP_CHANGE_RATE_WINDOW_SECONDS",
+            "settings_subgroup_change_rate_window_seconds",
+        ),
+    )
 
     host: str = Field(
         default="127.0.0.1",
