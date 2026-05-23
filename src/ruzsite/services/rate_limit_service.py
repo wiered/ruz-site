@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Sequence
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from fastapi import HTTPException, Request, status
 from ruzclient.http.endpoints.schedule import UserScheduleLesson
 
-from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.rate_limit import RateLimitResult
+from ruzsite.schemas.schedule import ScheduleCacheSnapshot
 from ruzsite.services.redis_service import get_redis
 from ruzsite.settings import get_settings
-
-setup_logging()
-logger = logging.getLogger(__name__)
 
 
 class RedisProtocol(Protocol):
@@ -83,15 +79,6 @@ async def check_rate_limit(
     retry_after_seconds = window_seconds if ttl_seconds < 0 else ttl_seconds
     remaining = max(limit - current, 0)
     allowed = current <= limit
-    logger.debug(
-        "Rate limit scope=%s subject=%s current=%s limit=%s ttl=%s allowed=%s",
-        scope,
-        subject,
-        current,
-        limit,
-        retry_after_seconds,
-        allowed,
-    )
     return RateLimitResult(
         allowed=allowed,
         limit=limit,
@@ -118,12 +105,6 @@ async def enforce_rate_limit(
     if result.allowed:
         return
 
-    logger.warning(
-        "Rate limit exceeded scope=%s subject=%s retry_after_seconds=%s",
-        scope,
-        subject,
-        result.retry_after_seconds,
-    )
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail=detail,
@@ -131,14 +112,29 @@ async def enforce_rate_limit(
     )
 
 
-async def get_cached_schedule(telegram_user_id: int) -> list[UserScheduleLesson] | None:
+async def get_cached_schedule(
+    telegram_user_id: int,
+) -> ScheduleCacheSnapshot | None:
     """Load a cached schedule snapshot for a Telegram user."""
     redis = await _redis()
     payload = await redis.get(_schedule_cache_key(telegram_user_id))
     if payload is None:
         return None
-    logger.debug("Loaded cached schedule for Telegram user ID %s", telegram_user_id)
-    return json.loads(payload)
+    raw_payload = json.loads(payload)
+    if isinstance(raw_payload, list):
+        return ScheduleCacheSnapshot(schedule=raw_payload)
+    if not isinstance(raw_payload, dict):
+        return None
+
+    schedule = raw_payload.get("schedule")
+    if not isinstance(schedule, list):
+        return None
+
+    return ScheduleCacheSnapshot(
+        schedule=schedule,
+        group_id=raw_payload.get("group_id"),
+        subgroup=_coerce_optional_int(raw_payload.get("subgroup")),
+    )
 
 
 async def cache_schedule(
@@ -146,16 +142,29 @@ async def cache_schedule(
     schedule: Sequence[UserScheduleLesson],
     *,
     ttl_seconds: int,
+    group_id: Any | None = None,
+    subgroup: int | None = None,
 ) -> None:
     """Store a serialized schedule snapshot for a Telegram user."""
     redis = await _redis()
+    payload = {
+        "schedule": list(schedule),
+        "group_id": group_id,
+        "subgroup": subgroup,
+    }
     await redis.set(
         _schedule_cache_key(telegram_user_id),
-        json.dumps(list(schedule), ensure_ascii=False, separators=(",", ":")),
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         ex=ttl_seconds,
     )
-    logger.debug(
-        "Cached schedule for Telegram user ID %s ttl_seconds=%s",
-        telegram_user_id,
-        ttl_seconds,
-    )
+
+
+def _coerce_optional_int(value: object) -> int | None:
+    """Convert Redis JSON metadata to an integer when possible."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
