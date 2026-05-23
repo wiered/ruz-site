@@ -13,7 +13,7 @@ from ruzsite.routes.auth import router as auth_router
 from ruzsite.routes.health import router as health_router
 from ruzsite.routes.homepage import router as homepage_router
 from ruzsite.routes.schedule import router as schedule_router
-from ruzsite.services.redis_service import close_redis
+from ruzsite.services.redis_service import close_redis, ensure_redis_available
 from ruzsite.settings import ROOT, get_settings
 
 setup_logging()
@@ -22,7 +22,8 @@ get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Close shared resources when the app shuts down."""
+    """Verify startup dependencies and close shared resources on shutdown."""
+    await ensure_redis_available()
     yield
     await close_redis()
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from inspect import isawaitable
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.settings import get_settings
@@ -25,6 +27,24 @@ async def get_redis() -> Redis:
         )
         logger.info("Initialized Redis client")
     return _redis_client
+
+
+async def ensure_redis_available() -> None:
+    """Verify Redis connectivity and raise a readable startup error if unavailable."""
+    settings = get_settings()
+    redis = await get_redis()
+    try:
+        ping_result = redis.ping()
+        if isawaitable(ping_result):
+            await ping_result
+    except RedisError as exc:
+        message = (
+            "Redis is required for rate limiting and schedule caching, but the "
+            f"application could not connect to {settings.redis_url}. "
+            "Check REDIS_URL and make sure Redis is running before starting the app."
+        )
+        logger.error(message)
+        raise RuntimeError(message) from exc
 
 
 async def close_redis() -> None:

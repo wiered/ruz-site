@@ -3,20 +3,15 @@
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Sequence
 from typing import Protocol, cast
 
 from fastapi import HTTPException, Request, status
 from ruzclient.http.endpoints.schedule import UserScheduleLesson
 
-from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.rate_limit import RateLimitResult
 from ruzsite.services.redis_service import get_redis
 from ruzsite.settings import get_settings
-
-setup_logging()
-logger = logging.getLogger(__name__)
 
 
 class RedisProtocol(Protocol):
@@ -83,15 +78,6 @@ async def check_rate_limit(
     retry_after_seconds = window_seconds if ttl_seconds < 0 else ttl_seconds
     remaining = max(limit - current, 0)
     allowed = current <= limit
-    logger.debug(
-        "Rate limit scope=%s subject=%s current=%s limit=%s ttl=%s allowed=%s",
-        scope,
-        subject,
-        current,
-        limit,
-        retry_after_seconds,
-        allowed,
-    )
     return RateLimitResult(
         allowed=allowed,
         limit=limit,
@@ -118,12 +104,6 @@ async def enforce_rate_limit(
     if result.allowed:
         return
 
-    logger.warning(
-        "Rate limit exceeded scope=%s subject=%s retry_after_seconds=%s",
-        scope,
-        subject,
-        result.retry_after_seconds,
-    )
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail=detail,
@@ -137,7 +117,6 @@ async def get_cached_schedule(telegram_user_id: int) -> list[UserScheduleLesson]
     payload = await redis.get(_schedule_cache_key(telegram_user_id))
     if payload is None:
         return None
-    logger.debug("Loaded cached schedule for Telegram user ID %s", telegram_user_id)
     return json.loads(payload)
 
 
@@ -153,9 +132,4 @@ async def cache_schedule(
         _schedule_cache_key(telegram_user_id),
         json.dumps(list(schedule), ensure_ascii=False, separators=(",", ":")),
         ex=ttl_seconds,
-    )
-    logger.debug(
-        "Cached schedule for Telegram user ID %s ttl_seconds=%s",
-        telegram_user_id,
-        ttl_seconds,
     )

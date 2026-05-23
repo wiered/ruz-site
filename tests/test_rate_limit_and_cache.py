@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 import pytest
 from fastapi.testclient import TestClient
+from redis.exceptions import ConnectionError as RedisConnectionError
 from starlette.requests import Request
 
 os.environ["API_URL"] = "https://example.com"
@@ -23,7 +24,7 @@ os.environ["SESSION_SECRET"] = "test-session-secret"
 import ruzsite.app as app_module
 from ruzsite.schemas.auth import SessionData
 from ruzsite.services.auth_service import SESSION_COOKIE_NAME, encode_session
-from ruzsite.services import rate_limit_service, schedule_service
+from ruzsite.services import rate_limit_service, redis_service, schedule_service
 from ruzsite.settings import get_settings
 
 
@@ -60,6 +61,38 @@ class FakeRedis:
         if ex is not None:
             self.ttls[name] = ex
         return True
+
+    async def ping(self) -> bool:
+        """Report that Redis is reachable."""
+        return True
+
+
+class UnavailableRedis:
+    """Async Redis double that always fails with a connection error."""
+
+    async def ping(self) -> bool:
+        """Raise a connection error for health checks."""
+        raise RedisConnectionError("redis offline")
+
+    async def incr(self, name: str) -> int:
+        """Raise a connection error for counter increments."""
+        raise RedisConnectionError("redis offline")
+
+    async def expire(self, name: str, time: int) -> bool:
+        """Raise a connection error for TTL updates."""
+        raise RedisConnectionError("redis offline")
+
+    async def ttl(self, name: str) -> int:
+        """Raise a connection error for TTL reads."""
+        raise RedisConnectionError("redis offline")
+
+    async def get(self, name: str) -> str | None:
+        """Raise a connection error for cache reads."""
+        raise RedisConnectionError("redis offline")
+
+    async def set(self, name: str, value: str, ex: int | None = None) -> bool:
+        """Raise a connection error for cache writes."""
+        raise RedisConnectionError("redis offline")
 
 
 def _build_init_data(*, bot_token: str, user: dict[str, object], auth_date: int) -> str:
@@ -323,3 +356,84 @@ def test_schedule_state_uses_cached_schedule_after_first_request(
     )
     assert load_calls == [555]
     assert fake_redis.ttls["cache:schedule:555"] == settings.schedule_cache_ttl_seconds
+
+
+def test_app_startup_raises_human_readable_error_when_redis_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """App startup should fail with a readable error when Redis is unavailable."""
+
+    async def fake_get_redis() -> UnavailableRedis:
+        return UnavailableRedis()
+
+    monkeypatch.setattr(redis_service, "get_redis", fake_get_redis)
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "Redis is required for rate limiting and schedule caching, "
+            "but the application could not connect"
+        ),
+    ):
+        run(redis_service.ensure_redis_available())
+
+
+def test_lifespan_checks_redis_before_serving_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """App lifespan should verify Redis before the app starts serving requests."""
+    calls: list[str] = []
+
+    async def fake_ensure_redis_available() -> None:
+        calls.append("ensure")
+
+    async def fake_close_redis() -> None:
+        calls.append("close")
+
+    monkeypatch.setattr(
+        app_module, "ensure_redis_available", fake_ensure_redis_available
+    )
+    monkeypatch.setattr(app_module, "close_redis", fake_close_redis)
+
+    async def run_lifespan() -> None:
+        async with app_module.lifespan(app_module.app):
+            assert calls == ["ensure"]
+
+    run(run_lifespan())
+
+    assert calls == ["ensure", "close"]
+
+
+def test_check_rate_limit_propagates_redis_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rate limiting should not silently disable itself when Redis fails."""
+
+    async def fake_get_redis() -> UnavailableRedis:
+        return UnavailableRedis()
+
+    monkeypatch.setattr(rate_limit_service, "_redis", fake_get_redis)
+
+    with pytest.raises(RedisConnectionError, match="redis offline"):
+        run(
+            rate_limit_service.check_rate_limit(
+                scope="schedule:user",
+                subject="555",
+                limit=30,
+                window_seconds=60,
+            )
+        )
+
+
+def test_schedule_cache_propagates_redis_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Schedule cache reads should not silently ignore Redis failures."""
+
+    async def fake_get_redis() -> UnavailableRedis:
+        return UnavailableRedis()
+
+    monkeypatch.setattr(rate_limit_service, "_redis", fake_get_redis)
+
+    with pytest.raises(RedisConnectionError, match="redis offline"):
+        run(rate_limit_service.get_cached_schedule(555))
