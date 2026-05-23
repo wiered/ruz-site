@@ -509,9 +509,9 @@ def test_settings_page_renders_group_search_results(
     response = client.get("/settings?q=AB-123", follow_redirects=False)
 
     assert response.status_code == 200
-    assert "Preferences for this device" in response.text
+    assert "Настройки" in response.text
     assert "OLD-111" in response.text
-    assert "Find a new group" in response.text
+    assert "Найти и установить группу" in response.text
     assert 'data-theme-choice="system"' in response.text
     assert 'action="/settings/group"' in response.text
     assert 'action="/settings/subgroup"' in response.text
