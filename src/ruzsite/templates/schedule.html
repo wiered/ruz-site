@@ -3,8 +3,8 @@
 {% block title %}Schedule · RUZ{% endblock %}
 
 {% block page_heading %}
-  <div class="page-title">Schedule</div>
-  <div class="page-subtitle">Your current lessons from RUZ</div>
+  <div class="page-title">Расписание</div>
+  <div class="page-subtitle">Расписание до конца следующего месяца</div>
 {% endblock %}
 
 {% block content %}
@@ -27,7 +27,7 @@
       <line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
     <div style="font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">No lessons found</div>
-    <div class="text-muted">Your schedule appears to be empty for this period.</div>
+    <div class="text-muted">Нет пар.</div>
   </div>
 
   {% else %}
@@ -36,7 +36,7 @@
       <table class="schedule-table">
         <thead>
           <tr>
-            <th>Date</th>
+            <th>Дата</th>
             {% for slot in state.schedule_slots %}
             <th>{{ slot.label }}</th>
             {% endfor %}
