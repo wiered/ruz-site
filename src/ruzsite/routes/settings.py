@@ -6,6 +6,7 @@ from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, st
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
+from ruzsite.services.auth_service import validate_same_origin_or_referer
 from ruzsite.services.settings_service import (
     build_page,
     change_group,
@@ -45,6 +46,7 @@ async def update_group(
     group_label: str = Form(...),
 ) -> Response:
     """Update the authenticated user's group selection."""
+    validate_same_origin_or_referer(request)
     try:
         state = await change_group(
             request,
@@ -69,6 +71,7 @@ async def update_subgroup(
     subgroup: int = Form(...),
 ) -> Response:
     """Update the authenticated user's subgroup selection."""
+    validate_same_origin_or_referer(request)
     try:
         state = await change_subgroup(request, subgroup=subgroup)
     except HTTPException as exc:

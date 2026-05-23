@@ -14,6 +14,7 @@ from fastapi import HTTPException, Request, status
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.auth import SessionData, TelegramAuthRequest, TelegramUser
+from ruzsite.settings import get_settings
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -134,40 +135,89 @@ async def extract_init_data(request: Request) -> str:
     )
 
 
-def validate_same_origin(request: Request) -> None:
-    """Reject cross-site auth requests based on the Origin header."""
-    origin = request.headers.get("origin")
-    if not origin:
-        logger.warning("Telegram auth request is missing Origin header")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Telegram auth request origin is invalid.",
-        )
+def _expected_origin(request: Request) -> str:
+    """Build the expected origin, trusting forwarded headers only from proxies."""
+    settings = get_settings()
+    client_host = request.client.host if request.client else None
+    expected_host = request.url.netloc
+    expected_scheme = request.url.scheme
 
-    origin_parts = urlsplit(origin)
-    if not origin_parts.scheme or not origin_parts.netloc:
-        logger.warning("Telegram auth request has malformed Origin header %s", origin)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Telegram auth request origin is invalid.",
-        )
+    if client_host in settings.trusted_proxy_ips:
+        forwarded_host = request.headers.get("x-forwarded-host")
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        if forwarded_host:
+            expected_host = forwarded_host.split(",", maxsplit=1)[0].strip()
+        if forwarded_proto:
+            expected_scheme = forwarded_proto.split(",", maxsplit=1)[0].strip()
 
-    forwarded_host = request.headers.get("x-forwarded-host")
-    forwarded_proto = request.headers.get("x-forwarded-proto")
-    expected_host = forwarded_host or request.url.netloc
-    expected_scheme = forwarded_proto or request.url.scheme
-    expected_origin = f"{expected_scheme}://{expected_host}"
+    return f"{expected_scheme}://{expected_host}"
 
-    if origin_parts.netloc != expected_host or origin_parts.scheme != expected_scheme:
+
+def _validate_request_provenance(
+    request: Request,
+    *,
+    require_origin: bool,
+    detail: str,
+    request_name: str,
+) -> None:
+    """Reject requests whose Origin or Referer does not match the expected origin."""
+    expected_origin = _expected_origin(request)
+    candidate_headers = ("origin",) if require_origin else ("origin", "referer")
+
+    for header_name in candidate_headers:
+        header_value = request.headers.get(header_name)
+        if not header_value:
+            continue
+
+        header_parts = urlsplit(header_value)
+        if not header_parts.scheme or not header_parts.netloc:
+            logger.warning(
+                "%s has malformed %s header %s",
+                request_name,
+                header_name.title(),
+                header_value,
+            )
+            break
+
+        actual_origin = f"{header_parts.scheme}://{header_parts.netloc}"
+        if hmac.compare_digest(actual_origin, expected_origin):
+            return
+
         logger.warning(
-            "Rejected Telegram auth request from origin %s; expected %s",
-            origin,
+            "Rejected %s from %s header %s; expected %s",
+            request_name,
+            header_name.title(),
+            actual_origin,
             expected_origin,
         )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Telegram auth request origin is invalid.",
-        )
+        break
+
+    missing_header = "Origin" if require_origin else "Origin/Referer"
+    logger.warning("%s is missing a valid %s header", request_name, missing_header)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=detail,
+    )
+
+
+def validate_same_origin(request: Request) -> None:
+    """Reject cross-site auth requests based on the Origin header."""
+    _validate_request_provenance(
+        request,
+        require_origin=True,
+        detail="Telegram auth request origin is invalid.",
+        request_name="Telegram auth request",
+    )
+
+
+def validate_same_origin_or_referer(request: Request) -> None:
+    """Reject cross-site form posts based on the Origin or Referer header."""
+    _validate_request_provenance(
+        request,
+        require_origin=False,
+        detail="Settings request origin is invalid.",
+        request_name="Settings request",
+    )
 
 
 def encode_session(session_data: SessionData, *, secret: str) -> str:

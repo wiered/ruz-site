@@ -145,6 +145,48 @@ class Settings(BaseSettings):
             "settings_subgroup_change_rate_window_seconds",
         ),
     )
+    settings_search_user_rate_limit: int = Field(
+        default=20,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_USER_RATE_LIMIT",
+            "settings_search_user_rate_limit",
+        ),
+    )
+    settings_search_user_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_USER_RATE_WINDOW_SECONDS",
+            "settings_search_user_rate_window_seconds",
+        ),
+    )
+    settings_search_ip_rate_limit: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_IP_RATE_LIMIT",
+            "settings_search_ip_rate_limit",
+        ),
+    )
+    settings_search_ip_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_IP_RATE_WINDOW_SECONDS",
+            "settings_search_ip_rate_window_seconds",
+        ),
+    )
+    settings_search_query_min_length: int = Field(
+        default=2,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_QUERY_MIN_LENGTH",
+            "settings_search_query_min_length",
+        ),
+    )
+    settings_search_query_max_length: int = Field(
+        default=100,
+        validation_alias=AliasChoices(
+            "SETTINGS_SEARCH_QUERY_MAX_LENGTH",
+            "settings_search_query_max_length",
+        ),
+    )
 
     host: str = Field(
         default="127.0.0.1",

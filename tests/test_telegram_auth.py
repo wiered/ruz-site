@@ -28,6 +28,7 @@ from ruzsite.services.auth_service import (
     SESSION_COOKIE_NAME,
     decode_session,
     encode_session,
+    validate_same_origin,
     verify_telegram_init_data,
 )
 from ruzsite.services import homepage_service
@@ -155,3 +156,49 @@ def test_homepage_shows_basic_user_info(monkeypatch: pytest.MonkeyPatch) -> None
     assert "Captain" in page
     assert "captain" in page
     assert "99" in page
+
+
+def test_validate_same_origin_ignores_forwarded_headers_from_untrusted_peer() -> None:
+    """Direct clients must not spoof expected origin via forwarded headers."""
+    request = Request(
+        {
+            "type": "http",
+            "scheme": "https",
+            "server": ("ruz.example", 443),
+            "client": ("203.0.113.10", 12345),
+            "path": "/auth/telegram",
+            "headers": [
+                (b"host", b"ruz.example"),
+                (b"origin", b"https://attacker.example"),
+                (b"x-forwarded-host", b"attacker.example"),
+                (b"x-forwarded-proto", b"https"),
+            ],
+        }
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        validate_same_origin(request)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Telegram auth request origin is invalid."
+
+
+def test_validate_same_origin_trusts_forwarded_headers_from_known_proxy() -> None:
+    """Known proxies may supply the canonical forwarded origin."""
+    request = Request(
+        {
+            "type": "http",
+            "scheme": "http",
+            "server": ("127.0.0.1", 3000),
+            "client": ("127.0.0.1", 12345),
+            "path": "/auth/telegram",
+            "headers": [
+                (b"host", b"127.0.0.1:3000"),
+                (b"origin", b"https://ruz.example"),
+                (b"x-forwarded-host", b"ruz.example"),
+                (b"x-forwarded-proto", b"https"),
+            ],
+        }
+    )
+
+    validate_same_origin(request)
