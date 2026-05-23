@@ -470,6 +470,8 @@ html[data-theme="light"] .theme-toggle {
 }
 
 .schedule-wrap {
+  position: relative;
+  isolation: isolate;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: inherit;
@@ -477,16 +479,19 @@ html[data-theme="light"] .theme-toggle {
 
 .schedule-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: 680px;
   font-size: 12px;
 }
 
 .schedule-table th,
 .schedule-table td {
-  border: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   vertical-align: top;
   text-align: left;
+  background-clip: padding-box;
 }
 
 .schedule-table thead th {
@@ -502,10 +507,11 @@ html[data-theme="light"] .theme-toggle {
 
 .schedule-table thead th:first-child {
   position: sticky;
-  left: -1px;
+  left: 0;
   z-index: 3;
   text-align: center;
   box-shadow: 1px 0 0 var(--border-subtle);
+  transform: translateZ(0);
 }
 
 .schedule-table tbody th {
@@ -517,10 +523,11 @@ html[data-theme="light"] .theme-toggle {
   color: var(--text-secondary);
   white-space: nowrap;
   position: sticky;
-  left: -1px;
+  left: 0;
   z-index: 2;
   text-align: center;
   box-shadow: 1px 0 0 var(--border-subtle);
+  transform: translateZ(0);
 }
 
 .schedule-table thead th:not(:first-child) {
