@@ -8,7 +8,7 @@ import hmac
 import json
 import logging
 import time
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import HTTPException, Request, status
 
@@ -144,9 +144,26 @@ def validate_same_origin(request: Request) -> None:
             detail="Telegram auth request origin is invalid.",
         )
 
-    request_origin = f"{request.url.scheme}://{request.url.netloc}"
-    if origin.rstrip("/") != request_origin:
-        logger.warning("Rejected Telegram auth request from origin %s", origin)
+    origin_parts = urlsplit(origin)
+    if not origin_parts.scheme or not origin_parts.netloc:
+        logger.warning("Telegram auth request has malformed Origin header %s", origin)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Telegram auth request origin is invalid.",
+        )
+
+    forwarded_host = request.headers.get("x-forwarded-host")
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    expected_host = forwarded_host or request.url.netloc
+    expected_scheme = forwarded_proto or request.url.scheme
+    expected_origin = f"{expected_scheme}://{expected_host}"
+
+    if origin_parts.netloc != expected_host or origin_parts.scheme != expected_scheme:
+        logger.warning(
+            "Rejected Telegram auth request from origin %s; expected %s",
+            origin,
+            expected_origin,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Telegram auth request origin is invalid.",

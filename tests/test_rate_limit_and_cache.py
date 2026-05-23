@@ -203,6 +203,29 @@ def test_auth_rejects_cross_origin_request(fake_redis: FakeRedis) -> None:
     assert response.json()["detail"] == "Telegram auth request origin is invalid."
 
 
+def test_auth_accepts_forwarded_https_origin(fake_redis: FakeRedis) -> None:
+    """Telegram auth should accept the public HTTPS origin behind a proxy."""
+    settings = get_settings()
+    init_data = _build_init_data(
+        bot_token=settings.telegram_bot_token,
+        user={"id": 777, "first_name": "Ruz"},
+        auth_date=int(time.time()),
+    )
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/auth/telegram",
+        json={"initData": init_data},
+        headers={
+            "Origin": "https://ruz.example",
+            "X-Forwarded-Host": "ruz.example",
+            "X-Forwarded-Proto": "https",
+        },
+    )
+
+    assert response.status_code == 200
+
+
 def test_auth_rejects_non_json_request(fake_redis: FakeRedis) -> None:
     """Telegram auth should only accept JSON bodies."""
     settings = get_settings()
