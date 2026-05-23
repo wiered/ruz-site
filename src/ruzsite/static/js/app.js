@@ -1,6 +1,8 @@
 ﻿
 (() => {
   const THEME_KEY = "ruz-theme";
+  const STYLESHEET_KEY = "ruz-stylesheet";
+  const STYLESHEET_VERSION = "2";
   const root = document.documentElement;
 
   function getSystemTheme() {
@@ -35,6 +37,26 @@
     }
   }
 
+  function getStoredStylesheet() {
+    return localStorage.getItem(STYLESHEET_KEY) === "compact" ? "compact" : "app";
+  }
+
+  function applyStylesheet(stylesheetName = getStoredStylesheet()) {
+    const normalizedStylesheet = stylesheetName === "compact" ? "compact" : "app";
+    const stylesheet = document.getElementById("app-stylesheet");
+    if (stylesheet instanceof HTMLLinkElement) {
+      stylesheet.href = `/static/css/${normalizedStylesheet}.css?v=${STYLESHEET_VERSION}`;
+    }
+
+    root.dataset.stylesheet = normalizedStylesheet;
+
+    for (const button of document.querySelectorAll("[data-stylesheet-choice]")) {
+      const isActive = button.dataset.stylesheetChoice === normalizedStylesheet;
+      button.dataset.active = String(isActive);
+      button.setAttribute("aria-checked", String(isActive));
+    }
+  }
+
   function toggleTheme() {
     const nextTheme = getActiveTheme() === "light" ? "dark" : "light";
     localStorage.setItem(THEME_KEY, nextTheme);
@@ -58,8 +80,21 @@
     applyTheme(themePreference);
   }
 
+  function selectStylesheet(event) {
+    const button = event.currentTarget;
+    const stylesheetName = button.dataset.stylesheetChoice;
+    if (!stylesheetName) {
+      return;
+    }
+
+    const normalizedStylesheet = stylesheetName === "compact" ? "compact" : "app";
+    localStorage.setItem(STYLESHEET_KEY, normalizedStylesheet);
+    applyStylesheet(normalizedStylesheet);
+  }
+
   function initThemeControls() {
     applyTheme();
+    applyStylesheet();
 
     for (const button of document.querySelectorAll("[data-theme-toggle]")) {
       if (button.dataset.themeReady === "true") {
@@ -77,6 +112,15 @@
 
       button.dataset.themeReady = "true";
       button.addEventListener("click", selectTheme);
+    }
+
+    for (const button of document.querySelectorAll("[data-stylesheet-choice]")) {
+      if (button.dataset.stylesheetReady === "true") {
+        continue;
+      }
+
+      button.dataset.stylesheetReady = "true";
+      button.addEventListener("click", selectStylesheet);
     }
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
