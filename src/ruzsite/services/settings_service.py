@@ -21,6 +21,7 @@ from ruzsite.services.auth_service import SESSION_COOKIE_NAME, decode_session
 from ruzsite.services.homepage_service import load_ruz_user
 from ruzsite.services.rate_limit_service import (
     enforce_rate_limit,
+    get_client_ip,
     invalidate_cached_schedule,
 )
 from ruzsite.settings import ROOT, get_settings
@@ -28,6 +29,22 @@ from ruzsite.settings import ROOT, get_settings
 setup_logging()
 logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory=Path(ROOT, "src", "ruzsite", "templates"))
+
+
+def _validate_group_query(normalized_query: str) -> str | None:
+    """Validate a search query before sending it to the upstream API."""
+    settings = get_settings()
+    if len(normalized_query) < settings.settings_search_query_min_length:
+        return (
+            "Enter at least "
+            f"{settings.settings_search_query_min_length} characters to search."
+        )
+    if len(normalized_query) > settings.settings_search_query_max_length:
+        return (
+            "Search query is too long. Use at most "
+            f"{settings.settings_search_query_max_length} characters."
+        )
+    return None
 
 
 @asynccontextmanager
@@ -204,6 +221,32 @@ async def settings_state(
             ruz_user=ruz_user,
             success_message=success_message,
         )
+
+    query_error = _validate_group_query(normalized_query)
+    if query_error is not None:
+        return await _base_settings_state(
+            ruz_user=ruz_user,
+            group_query=normalized_query,
+            error_message=query_error,
+            success_message=success_message,
+        )
+
+    settings = get_settings()
+    client_ip = get_client_ip(request)
+    await enforce_rate_limit(
+        scope="settings:search:ip",
+        subject=client_ip,
+        limit=settings.settings_search_ip_rate_limit,
+        window_seconds=settings.settings_search_ip_rate_window_seconds,
+        detail="Too many settings search requests from this IP address.",
+    )
+    await enforce_rate_limit(
+        scope="settings:search:user",
+        subject=str(session_data.telegram_user_id),
+        limit=settings.settings_search_user_rate_limit,
+        window_seconds=settings.settings_search_user_rate_window_seconds,
+        detail="Too many settings search requests for this Telegram user.",
+    )
 
     try:
         async with _ruz_client() as client:

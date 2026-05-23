@@ -25,6 +25,9 @@ from ruzsite.services import rate_limit_service, settings_service
 from ruzsite.services.auth_service import SESSION_COOKIE_NAME, encode_session
 from ruzsite.settings import get_settings
 
+SAME_ORIGIN_HEADERS = {"origin": "http://testserver"}
+SAME_ORIGIN_REFERER_HEADERS = {"referer": "http://testserver/settings"}
+
 
 class FakeGroupsApi:
     """Minimal fake groups API for settings tests."""
@@ -459,6 +462,7 @@ def test_change_subgroup_updates_existing_user_and_clears_schedule_cache(
 
 
 def test_settings_page_renders_group_search_results(
+    fake_redis: FakeRedis,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The settings page should render the new group search and selection UI."""
@@ -580,6 +584,7 @@ def test_group_change_rate_limit_blocks_eleventh_request(
         response = client.post(
             "/settings/group",
             data={"group_oid": "321", "group_label": "AB-123"},
+            headers=SAME_ORIGIN_HEADERS,
             follow_redirects=False,
         )
         assert response.status_code == 200
@@ -587,6 +592,7 @@ def test_group_change_rate_limit_blocks_eleventh_request(
     blocked = client.post(
         "/settings/group",
         data={"group_oid": "321", "group_label": "AB-123"},
+        headers=SAME_ORIGIN_HEADERS,
         follow_redirects=False,
     )
 
@@ -652,6 +658,7 @@ def test_subgroup_change_rate_limit_blocks_eleventh_request(
         response = client.post(
             "/settings/subgroup",
             data={"subgroup": "2"},
+            headers=SAME_ORIGIN_HEADERS,
             follow_redirects=False,
         )
         assert response.status_code == 200
@@ -659,6 +666,7 @@ def test_subgroup_change_rate_limit_blocks_eleventh_request(
     blocked = client.post(
         "/settings/subgroup",
         data={"subgroup": "2"},
+        headers=SAME_ORIGIN_HEADERS,
         follow_redirects=False,
     )
 
@@ -666,5 +674,164 @@ def test_subgroup_change_rate_limit_blocks_eleventh_request(
     assert (
         blocked.json()["detail"]
         == "Too many subgroup change attempts for this Telegram user."
+    )
+    assert blocked.headers["Retry-After"] == "60"
+
+
+def test_group_change_rejects_cross_site_post() -> None:
+    """Settings mutations must enforce same-origin provenance."""
+    settings = get_settings()
+    session = SessionData(
+        telegram_user_id=555,
+        first_name="Captain",
+        username="captain",
+        issued_at=int(time.time()),
+    )
+    cookie = encode_session(session, secret=settings.session_secret)
+    client = TestClient(app_module.app)
+    client.cookies.set(SESSION_COOKIE_NAME, cookie)
+
+    response = client.post(
+        "/settings/group",
+        data={"group_oid": "321", "group_label": "AB-123"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Settings request origin is invalid."
+
+
+def test_subgroup_change_accepts_same_origin_referer(
+    fake_redis: FakeRedis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Settings POSTs may authenticate provenance with Referer when Origin is absent."""
+    fake_users = FakeUsersApi(
+        existing_user={
+            "id": 555,
+            "group_oid": 918,
+            "subgroup": 1,
+            "username": "captain",
+            "created_at": "2026-05-23T00:00:00Z",
+            "last_used_at": "2026-05-23T00:00:00Z",
+        }
+    )
+    fake_client = FakeRuzClient(groups=FakeGroupsApi(), users=fake_users)
+
+    async def fake_load_ruz_user(user_id: int) -> dict[str, Any]:
+        assert user_id == 555
+        return {"group_oid": 918, "group_name": "ИБАС-42", "subgroup": 2}
+
+    async def fake_invalidate_cached_schedule(user_id: int) -> None:
+        assert user_id == 555
+
+    @asynccontextmanager
+    async def fake_ruz_client():
+        yield fake_client
+
+    monkeypatch.setattr(settings_service, "load_ruz_user", fake_load_ruz_user)
+    monkeypatch.setattr(
+        settings_service,
+        "invalidate_cached_schedule",
+        fake_invalidate_cached_schedule,
+    )
+    monkeypatch.setattr(settings_service, "_ruz_client", fake_ruz_client)
+
+    settings = get_settings()
+    session = SessionData(
+        telegram_user_id=555,
+        first_name="Captain",
+        username="captain",
+        issued_at=int(time.time()),
+    )
+    cookie = encode_session(session, secret=settings.session_secret)
+    client = TestClient(app_module.app)
+    client.cookies.set(SESSION_COOKIE_NAME, cookie)
+
+    response = client.post(
+        "/settings/subgroup",
+        data={"subgroup": "2"},
+        headers=SAME_ORIGIN_REFERER_HEADERS,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+
+
+def test_settings_search_rejects_too_short_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Short settings searches should be rejected before hitting the upstream API."""
+    request = _build_request()
+    fake_client = FakeRuzClient(groups=FakeGroupsApi(), users=FakeUsersApi())
+
+    async def fake_load_ruz_user(user_id: int) -> dict[str, Any]:
+        assert user_id == 555
+        return {"group_oid": 111, "group_name": "OLD-111", "subgroup": 2}
+
+    @asynccontextmanager
+    async def fake_ruz_client():
+        yield fake_client
+
+    monkeypatch.setattr(settings_service, "load_ruz_user", fake_load_ruz_user)
+    monkeypatch.setattr(settings_service, "_ruz_client", fake_ruz_client)
+
+    state = run(settings_service.settings_state(request, group_query="A"))
+
+    assert state.error_message == "Enter at least 2 characters to search."
+    assert fake_client.groups.search_queries == []
+
+
+def test_settings_search_rate_limit_blocks_twenty_first_request(
+    fake_redis: FakeRedis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Settings search should throttle repeated upstream lookups per user."""
+    fake_client = FakeRuzClient(
+        groups=FakeGroupsApi(
+            search_results=[
+                {
+                    "oid": 321,
+                    "name": "AB-123",
+                    "guid": "guid-321",
+                    "faculty_name": "Flight Ops",
+                }
+            ]
+        ),
+        users=FakeUsersApi(),
+    )
+
+    async def fake_load_ruz_user(user_id: int) -> dict[str, Any]:
+        assert user_id == 555
+        return {"group_oid": 111, "group_name": "OLD-111", "subgroup": 2}
+
+    @asynccontextmanager
+    async def fake_ruz_client():
+        yield fake_client
+
+    monkeypatch.setattr(settings_service, "load_ruz_user", fake_load_ruz_user)
+    monkeypatch.setattr(settings_service, "_ruz_client", fake_ruz_client)
+
+    settings = get_settings()
+    session = SessionData(
+        telegram_user_id=555,
+        first_name="Captain",
+        username="captain",
+        issued_at=int(time.time()),
+    )
+    cookie = encode_session(session, secret=settings.session_secret)
+    client = TestClient(app_module.app)
+    client.cookies.set(SESSION_COOKIE_NAME, cookie)
+
+    for _ in range(20):
+        response = client.get("/settings?q=AB-123", follow_redirects=False)
+        assert response.status_code == 200
+
+    blocked = client.get("/settings?q=AB-123", follow_redirects=False)
+
+    assert blocked.status_code == 429
+    assert (
+        blocked.json()["detail"]
+        == "Too many settings search requests for this Telegram user."
     )
     assert blocked.headers["Retry-After"] == "60"
