@@ -28,6 +28,7 @@ from ruzsite.services.auth_service import (
     SESSION_COOKIE_NAME,
     decode_session,
     encode_session,
+    extract_init_data,
     validate_same_origin,
     verify_telegram_init_data,
 )
@@ -98,6 +99,31 @@ def test_telegram_auth_rejects_tampered_payload() -> None:
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Telegram initData signature is invalid."
+
+
+def test_extract_init_data_handles_client_disconnect() -> None:
+    """Disconnects while reading the auth body should become an HTTP error."""
+
+    async def receive() -> dict[str, object]:
+        return {"type": "http.disconnect"}
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/auth/telegram",
+            "headers": [(b"content-type", b"application/json")],
+        },
+        receive=receive,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        run(extract_init_data(request))
+
+    assert exc_info.value.status_code == 499
+    assert exc_info.value.detail == (
+        "Client closed the request before the body was fully sent."
+    )
 
 
 def test_signed_session_round_trip() -> None:

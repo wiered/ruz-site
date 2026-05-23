@@ -11,6 +11,7 @@ import time
 from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import HTTPException, Request, status
+from starlette.requests import ClientDisconnect
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.auth import SessionData, TelegramAuthRequest, TelegramUser
@@ -116,7 +117,15 @@ async def extract_init_data(request: Request) -> str:
             detail="Telegram auth endpoint only accepts JSON requests.",
         )
 
-    body = await request.body()
+    try:
+        body = await request.body()
+    except ClientDisconnect as exc:
+        logger.info("Telegram auth request body read interrupted by client disconnect")
+        raise HTTPException(
+            status_code=499,
+            detail="Client closed the request before the body was fully sent.",
+        ) from exc
+
     if not body:
         logger.warning("Telegram auth request is missing initData")
         raise HTTPException(
