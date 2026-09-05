@@ -178,6 +178,7 @@ def test_settings_page_redirects_without_session() -> None:
 
 
 def test_settings_state_loads_current_group_and_search_results(
+    fake_redis: FakeRedis,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Settings search should include current group data and matching results."""
