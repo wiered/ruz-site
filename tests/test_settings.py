@@ -836,3 +836,14 @@ def test_settings_search_rate_limit_blocks_twenty_first_request(
         == "Too many settings search requests for this Telegram user."
     )
     assert blocked.headers["Retry-After"] == "60"
+
+
+def test_robots_txt_disables_indexing() -> None:
+    """The site should instruct crawlers not to index any paths."""
+    client = TestClient(app_module.app)
+
+    response = client.get("/robots.txt", follow_redirects=False)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text == "User-agent: *\nDisallow: /\n"
