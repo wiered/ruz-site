@@ -178,6 +178,7 @@ def test_settings_page_redirects_without_session() -> None:
 
 
 def test_settings_state_loads_current_group_and_search_results(
+    fake_redis: FakeRedis,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Settings search should include current group data and matching results."""
@@ -509,9 +510,9 @@ def test_settings_page_renders_group_search_results(
     response = client.get("/settings?q=AB-123", follow_redirects=False)
 
     assert response.status_code == 200
-    assert "Preferences for this device" in response.text
+    assert "Настройки" in response.text
     assert "OLD-111" in response.text
-    assert "Find a new group" in response.text
+    assert "Найти и установить группу" in response.text
     assert 'data-theme-choice="system"' in response.text
     assert 'action="/settings/group"' in response.text
     assert 'action="/settings/subgroup"' in response.text
@@ -835,3 +836,14 @@ def test_settings_search_rate_limit_blocks_twenty_first_request(
         == "Too many settings search requests for this Telegram user."
     )
     assert blocked.headers["Retry-After"] == "60"
+
+
+def test_robots_txt_disables_indexing() -> None:
+    """The site should instruct crawlers not to index any paths."""
+    client = TestClient(app_module.app)
+
+    response = client.get("/robots.txt", follow_redirects=False)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text == "User-agent: *\nDisallow: /\n"

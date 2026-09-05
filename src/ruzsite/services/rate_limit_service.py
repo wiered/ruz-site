@@ -11,8 +11,8 @@ from ruzclient.http.endpoints.schedule import UserScheduleLesson
 
 from ruzsite.schemas.rate_limit import RateLimitResult
 from ruzsite.schemas.schedule import ScheduleCacheSnapshot
+from ruzsite.services.request_metadata_service import get_effective_client_ip
 from ruzsite.services.redis_service import get_redis
-from ruzsite.settings import get_settings
 
 
 class RedisProtocol(Protocol):
@@ -39,14 +39,7 @@ class RedisProtocol(Protocol):
 
 def get_client_ip(request: Request) -> str:
     """Return the best-effort client IP for the request."""
-    settings = get_settings()
-    client_host = request.client.host if request.client else None
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for and client_host in settings.trusted_proxy_ips:
-        return forwarded_for.split(",", maxsplit=1)[0].strip()
-    if client_host:
-        return client_host
-    return "unknown"
+    return get_effective_client_ip(request)
 
 
 async def _redis() -> RedisProtocol:

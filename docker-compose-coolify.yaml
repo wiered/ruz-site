@@ -11,6 +11,7 @@ services:
       - coolify
     environment:
       REDIS_URL: redis://redis-ruzsite:6379/0
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS}
     depends_on:
       redis-ruzsite:
         condition: service_healthy

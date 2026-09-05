@@ -11,9 +11,11 @@ import time
 from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import HTTPException, Request, status
+from starlette.requests import ClientDisconnect
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.auth import SessionData, TelegramAuthRequest, TelegramUser
+from ruzsite.services.proxy_service import is_trusted_proxy_host
 from ruzsite.settings import get_settings
 
 setup_logging()
@@ -116,7 +118,15 @@ async def extract_init_data(request: Request) -> str:
             detail="Telegram auth endpoint only accepts JSON requests.",
         )
 
-    body = await request.body()
+    try:
+        body = await request.body()
+    except ClientDisconnect as exc:
+        logger.info("Telegram auth request body read interrupted by client disconnect")
+        raise HTTPException(
+            status_code=499,
+            detail="Client closed the request before the body was fully sent.",
+        ) from exc
+
     if not body:
         logger.warning("Telegram auth request is missing initData")
         raise HTTPException(
@@ -137,12 +147,11 @@ async def extract_init_data(request: Request) -> str:
 
 def _expected_origin(request: Request) -> str:
     """Build the expected origin, trusting forwarded headers only from proxies."""
-    settings = get_settings()
     client_host = request.client.host if request.client else None
     expected_host = request.url.netloc
     expected_scheme = request.url.scheme
 
-    if client_host in settings.trusted_proxy_ips:
+    if is_trusted_proxy_host(client_host):
         forwarded_host = request.headers.get("x-forwarded-host")
         forwarded_proto = request.headers.get("x-forwarded-proto")
         if forwarded_host:
