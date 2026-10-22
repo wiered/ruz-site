@@ -3,15 +3,16 @@
 import logging
 from collections.abc import Mapping
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
+from ruzsite.services.activity_service import queue_request_activity
 from ruzsite.services.schedule_service import build_page, schedule_state
 
 setup_logging()
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(queue_request_activity)])
 
 
 def _detect_request_platform(request: Request) -> str:
