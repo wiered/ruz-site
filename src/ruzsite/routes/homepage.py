@@ -2,10 +2,11 @@
 
 import logging
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
+from ruzsite.services.activity_service import queue_request_activity
 from ruzsite.services.homepage_service import build_page, session_state
 
 setup_logging()
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get(
+    "/", response_class=HTMLResponse, dependencies=[Depends(queue_request_activity)]
+)
 async def homepage(request: Request) -> HTMLResponse:
     """Render the homepage."""
     logger.debug("Rendering homepage")

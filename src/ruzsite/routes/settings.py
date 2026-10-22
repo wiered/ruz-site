@@ -2,10 +2,20 @@
 
 import logging
 
-from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
+from ruzsite.services.activity_service import queue_request_activity
 from ruzsite.services.auth_service import validate_same_origin_or_referer
 from ruzsite.services.settings_service import (
     build_page,
@@ -16,7 +26,7 @@ from ruzsite.services.settings_service import (
 
 setup_logging()
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(queue_request_activity)])
 
 
 @router.get("/settings", response_class=HTMLResponse, response_model=None)
