@@ -49,7 +49,7 @@ def _remaining_interval(last_used_at: str | None) -> int:
 async def touch_user_activity(user_id: int) -> None:
     """Report activity at most every five minutes across all site workers."""
     try:
-        # Bound all Redis and HTTP operations; the lock outlives this deadline.
+        # Bound activity work; cleanup has its own budget after cancellation.
         async with timeout(10):
             redis = await get_redis()
             cooldown_key = f"activity:cooldown:{user_id}"
@@ -71,7 +71,14 @@ async def touch_user_activity(user_id: int) -> None:
                     elif await client.users.touch(user_id=user_id):
                         await redis.set(cooldown_key, "1", ex=ACTIVITY_INTERVAL_SECONDS)
             finally:
-                await lock.release()
+                try:
+                    async with timeout(1):
+                        await lock.release()
+                except TimeoutError:
+                    # The 15-second lock TTL also handles unavailable Redis.
+                    logger.warning(
+                        "Timed out releasing activity lock for user ID %s", user_id
+                    )
     except Exception:
         # Analytics must never break navigation, settings, or authentication.
         logger.warning(
