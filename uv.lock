@@ -830,8 +830,8 @@ wheels = [
 
 [[package]]
 name = "ruz-client"
-version = "1.0.1"
-source = { git = "https://github.com/wiered/ruz-client.git?rev=main#85d4a73c51294ccc60b55d29e1297cf45b937a85" }
+version = "1.0.2"
+source = { git = "https://github.com/wiered/ruz-client.git?rev=main#abfcb37db4da986dd3768b7deed1ba7922880abd" }
 dependencies = [
     { name = "aiohttp" },
 ]

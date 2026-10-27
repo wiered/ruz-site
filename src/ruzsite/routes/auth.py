@@ -3,11 +3,12 @@
 import logging
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from ruzsite.logging_config import setup_logging
 from ruzsite.schemas.auth import SessionData
+from ruzsite.services.activity_service import touch_user_activity
 from ruzsite.services.auth_service import (
     SESSION_COOKIE_NAME,
     encode_session,
@@ -25,7 +26,9 @@ settings = get_settings()
 
 
 @router.post("/telegram")
-async def telegram_auth(request: Request) -> JSONResponse:
+async def telegram_auth(
+    request: Request, background_tasks: BackgroundTasks
+) -> JSONResponse:
     """Verify Telegram Mini App init data and create a signed app session."""
     validate_same_origin(request)
     client_ip = get_client_ip(request)
@@ -75,6 +78,7 @@ async def telegram_auth(request: Request) -> JSONResponse:
         path="/",
     )
     logger.debug("Issued session cookie for Telegram user ID %s", telegram_user.id)
+    background_tasks.add_task(touch_user_activity, telegram_user.id)
     return response
 
 
